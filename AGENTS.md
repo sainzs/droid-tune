@@ -4,19 +4,24 @@ Droid Tune-Up: open-source diagnostic, tuning, and verification toolkit for
 Factory Droid — measures and maximizes **verified** engineering work per
 dollar. Built as a Factory Guild submission (factory.ai/ambassador).
 
-**Status: M3 shipped (2026-08-18).** `PLAN.md` is the source of truth;
-`docs/research-2026-08.md` is the verified evidence base. Next: M4
-(author 6–8 tasks incl. memex filesystem-torture; 3× flake check). M4 in
-progress: 7 tasks authored (t001 toy; t002 core-swe; t003 path-canonicalize +
-t006 safe-listdir filesystem-torture [memex]; t004 git-surgery + t007
-rename-symbol terminal-native; t005 harness-surface AGENTS.md compliance).
-`triforce` gates every task with a full Harbor layout (49/49 legs green); each
-verifier confirmed to discriminate a wrong/default/partial solution.
-PROVIDER_ERROR outcome added (trusted envelope + is_error + num_turns:0,
-distinct from DROID_ERROR); S1 isolation hardening (patches touching
-tests//solution/ disqualified; grading replaces tests/ wholesale). Blocked:
-live flake check — all 3 Zen free routes returned PROVIDER_ERROR/429 on
-2026-08-19; retry when cleared.
+**Status: M3 shipped (2026-08-18); M4 tasks + live flake check done
+(2026-08-19).** `PLAN.md` is the source of truth; `docs/research-2026-08.md` is
+the verified evidence base. M4: 7 tasks authored (t001 toy; t002 core-swe; t003
++ t006 filesystem-torture [memex]; t004 + t007 terminal-native; t005
+harness-surface). `triforce` gates every full-layout task (49/49 legs); each
+verifier discriminates a wrong/default/partial solution. Runner hardening: S1
+isolation (tests//solution/ patches disqualified; grading replaces tests/
+wholesale), S2/S3 PROVIDER_ERROR envelope gating (trusted envelope + is_error +
+num_turns:0; unit-tested), env-allowlist for `droid exec` (stops env-name leak
+into public packs; `DROIDTUNE_ENV_ALLOW` escape hatch). Live flake check (38
+trials, 4 Zen free routes, $0): 71% PASS — **t004-git-surgery is the
+discriminative instrument** (7/8 NO_SUBMISSION: models do the work but forget
+`git commit`); t003 separates small models by timeout; t002/t005/t007 stable.
+Results: `docs/m4-flake-check-2026-08.md`; aggregate any run with
+`node scripts/flake-report.js --runs-dir <dir>`. Working free routes:
+`hy3-free`, `laguna-s-2.1-free`, `nemotron-3.5-lightning-free`,
+`nemotron-3-ultra-free` (ids added to `~/.factory/settings.json`; backup
+`settings.json.bak-20260819`).
 
 ## Commands
 
