@@ -208,9 +208,25 @@ async function cmdRun (opts) {
 }
 
 async function cmdTriforce () {
-  // makeRunOne shells back into this CLI from the repo root.
+  // makeRunOne shells back into this CLI from the repo root. Gate every task
+  // that has the full Harbor layout (instruction + seed + oracle + tests).
   process.chdir(REPO_ROOT)
-  const { ok } = runTriforce(makeRunOne())
+  const tasksDir = path.join(REPO_ROOT, 'tasks')
+  const ids = readdirSync(tasksDir).filter(d =>
+    existsSync(path.join(tasksDir, d, 'environment', 'seed.sh')) &&
+    existsSync(path.join(tasksDir, d, 'solution', 'solve.sh')) &&
+    existsSync(path.join(tasksDir, d, 'tests', 'test.sh')))
+  if (ids.length === 0) {
+    process.stderr.write('droidtune: no tasks with full Harbor layout found\n')
+    process.exitCode = 2
+    return
+  }
+  let ok = true
+  for (const id of ids.sort()) {
+    process.stdout.write(`task ${id}\n`)
+    const res = runTriforce(makeRunOne({ taskId: id }))
+    if (!res.ok) ok = false
+  }
   process.exitCode = ok ? 0 : 1
 }
 

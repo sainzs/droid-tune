@@ -1,0 +1,6 @@
+id = "t005-agents-md-compliance"
+title = "Follow AGENTS.md conventions (output format + commit message)"
+category = "harness-surface"
+language = "bash"
+timeout_s = 300
+canary = "droidtune-t005-agents-md-compliance"

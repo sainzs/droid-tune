@@ -1,0 +1,6 @@
+id = "t003-path-canonicalize"
+title = "Canonicalize pathological file-path names (NFC/NFD, case, ligature twins)"
+category = "filesystem-torture"
+language = "javascript"
+timeout_s = 300
+canary = "droidtune-t003-path-canonicalize"

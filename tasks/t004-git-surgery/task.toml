@@ -1,0 +1,6 @@
+id = "t004-git-surgery"
+title = "Recover broken main via git surgery, preserving the good divide commit"
+category = "terminal-native"
+language = "bash"
+timeout_s = 300
+canary = "droidtune-t004-git-surgery"

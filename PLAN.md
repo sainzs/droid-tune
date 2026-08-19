@@ -347,7 +347,7 @@ hidden) → paired per-task deltas → Wilson-CI'd yields → Pareto frontier
 | M1 | 1–2 | Scaffold; `sessions.js` reader; `diagnose` MVP (version stamp, config snapshot, session tokenUsage dump, obvious-fault detection); BYOK `--probe` round-trip; harness hints; `--demo` fixtures; README stub + LICENSE ✅ 2026-08-18 |
 | M2 | 3–4 | `runner.js` + `ledger.js` + evidence packs; one toy task end-to-end through `droid exec` ✅ 2026-08-18 (t001 VERIFIED_PASS, Zen free route, $0) |
 | M3 | 5–6 | `verify.js` (isolation invariant, git hygiene, CTRF/reward); tri-force CI ✅ 2026-08-18 (62 tests, 7/7 triforce legs green) |
-| M4 | 7–8 | Author 6–8 tasks (incl. 1–2 memex filesystem-torture); 3× flake check |
+| M4 | 7–8 | Author 6–8 tasks; 3× flake check — in progress: 5 tasks authored 2026-08-19 (t001 toy; t002-slugify core-swe; t003-path-canonicalize memex filesystem-torture; t004-git-surgery terminal-native; t005-agents-md-compliance harness-surface). Triforce generalized to gate all tasks (35/35 legs green); every verifier confirmed to discriminate a wrong/default solution. S1 isolation hardening: patches touching tests//solution/ are disqualified, grading replaces tests/ wholesale. Remaining: 1–2 more (2nd filesystem-torture, 2nd terminal-native) + live flake-check runs |
 | M5 | 9–10 | `pricing.js`; baseline runs for `native-droid`; freeze first claim entries |
 | M6 | 11–12 | Tune arms (`cache-stable-droid` + BYOK models); pilot n=3 |
 | M7 | 13 | Confirmatory paired runs n=5 (finalists only) |
