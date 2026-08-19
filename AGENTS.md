@@ -7,13 +7,16 @@ dollar. Built as a Factory Guild submission (factory.ai/ambassador).
 **Status: M3 shipped (2026-08-18).** `PLAN.md` is the source of truth;
 `docs/research-2026-08.md` is the verified evidence base. Next: M4
 (author 6–8 tasks incl. memex filesystem-torture; 3× flake check). M4 in
-progress: 5 tasks authored (t001 toy; t002 core-swe; t003 memex
-filesystem-torture; t004 terminal-native git surgery; t005 harness-surface
-AGENTS.md compliance). `triforce` gates every task with a full Harbor layout
-(35/35 legs green); each verifier confirmed to discriminate a wrong/default
-solution. PROVIDER_ERROR outcome added (clean provider rejection, is_error +
-num_turns:0, distinct from DROID_ERROR); S1 isolation hardening (patches
-touching tests//solution/ disqualified; grading replaces tests/ wholesale).
+progress: 7 tasks authored (t001 toy; t002 core-swe; t003 path-canonicalize +
+t006 safe-listdir filesystem-torture [memex]; t004 git-surgery + t007
+rename-symbol terminal-native; t005 harness-surface AGENTS.md compliance).
+`triforce` gates every task with a full Harbor layout (49/49 legs green); each
+verifier confirmed to discriminate a wrong/default/partial solution.
+PROVIDER_ERROR outcome added (trusted envelope + is_error + num_turns:0,
+distinct from DROID_ERROR); S1 isolation hardening (patches touching
+tests//solution/ disqualified; grading replaces tests/ wholesale). Blocked:
+live flake check — all 3 Zen free routes returned PROVIDER_ERROR/429 on
+2026-08-19; retry when cleared.
 
 ## Commands
 

@@ -1,0 +1,6 @@
+id = "t007-rename-symbol"
+title = "Rename a public function and update every reference consistently"
+category = "terminal-native"
+language = "python"
+timeout_s = 300
+canary = "droidtune-t007-rename-symbol"

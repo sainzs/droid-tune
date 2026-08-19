@@ -1,0 +1,6 @@
+id = "t006-safe-listdir"
+title = "Filter directory-entry names for portable-open safety (control/invisible/reserved)"
+category = "filesystem-torture"
+language = "javascript"
+timeout_s = 300
+canary = "droidtune-t006-safe-listdir"
