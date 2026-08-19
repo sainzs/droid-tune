@@ -9,7 +9,7 @@
 |---|---|
 | Plan date | 2026-08-18 |
 | Landscape verified as of | 2026-08-18 (see `docs/research-2026-08.md`) |
-| Status | Plan stage — no code yet. First code = §10 M1. |
+| Status | M3 complete (2026-08-18): verify.js hardening + tri-force CI; M4 task authoring next |
 | Primary goal | Factory Guild submission (factory.ai/ambassador) |
 | Stack | Zero runtime deps, Node ≥ 20, ESM (memex identity) |
 | Relationship | Unofficial community project. **Not affiliated with Factory.** |
@@ -51,10 +51,12 @@ than the evidence permits.
    15–50× cheaper than miss depending on window and model — and now
    time-of-day doubles it). DeepSWE's own data shows the pattern: DeepSeek V4
    Flash at $0.10/task vs Claude Sonnet-class at $26/task.
-4. **The telemetry already exists locally.** `~/.factory/sessions/*.settings.json`
-   carries `tokenUsage.{inputTokens, outputTokens, cacheReadTokens,
-   cacheCreationTokens, thinkingTokens}` per session. Reporting tools exist
-   (OpenUsage, ccusage, SuperBased, toktrail); optimization tooling does not.
+4. **The telemetry already exists locally.**
+   `~/.factory/sessions/<encoded-cwd>/<uuid>.settings.json` carries
+   `tokenUsage.{inputTokens, outputTokens, cacheReadTokens,
+   cacheCreationTokens, thinkingTokens, factoryCredits}` per session, paired
+   with a `.jsonl` transcript. Reporting tools exist (OpenUsage, ccusage,
+   SuperBased, toktrail); optimization tooling does not.
 5. **Version churn creates the regression-tracking niche.** v0.193 retired
    MiniMax M2.5; v0.190 added Opus 5 to Auto routing; v0.196 fixed SessionStart
    hook context; v0.194/v0.189 fixed custom-model credential handling. At this
@@ -85,7 +87,7 @@ Our fit map:
 
 | Criterion | How we hit it |
 |---|---|
-| Build something with Factory | Drives `droid exec` headless; uses BYOK `customModels`, `--worktree`, skills, hooks, custom droids — each documented in README |
+| Build something with Factory | **Shipped:** drives `droid exec` headless through BYOK `customModels`, captures Droid session telemetry, and grades committed work. **Planned before launch:** `--worktree`, skills, hooks, and custom-droid experiments documented in README. |
 | Public + linkable | Public repo, public results, public trajectories, 60-second demo |
 | Reproducible | One command reruns any published claim from raw artifacts (§8) |
 | Real metric | First public Droid configuration cost/quality frontier |
@@ -101,6 +103,8 @@ numbers are real.
 
 ```text
 droidtune diagnose     Check protocol, model routing, cache, and configuration health
+droidtune trial        Run one development task and write a local evidence pack (M2 internal surface)
+droidtune triforce     Offline verifier self-test: oracle×3, no-op×2, cheat legs (M3; CI gate)
 droidtune baseline     Establish verified performance and cost (frozen bundle)
 droidtune tune         Search model, effort, context, cache, and session settings (pilot)
 droidtune verify       Prove a frozen tune on fresh confirmatory runs
@@ -157,7 +161,7 @@ Repo layout:
 droid-tune/
 ├── AGENTS.md
 ├── PLAN.md                    (this file)
-├── README.md                  (M8: quickstart, disclaimer, how it uses Droid)
+├── README.md                  (M2 quickstart + disclaimer; M8 launch/results pass)
 ├── LICENSE                    (MIT)
 ├── docs/research-2026-08.md   (verified evidence base + citations)
 ├── bin/droidtune.js           (hand-rolled args; exit codes 0/1/2 like memex)
@@ -165,15 +169,16 @@ droid-tune/
 │   ├── diagnose.js            protocol + cache + config probes
 │   ├── sessions.js            ~/.factory/sessions reader — two-level
 │   │                          <encoded-cwd>/<uuid> pairs (settings.json + jsonl)
-│   ├── runner.js              droid exec orchestration, paired trials, timeouts
+│   ├── runner.js              droid exec orchestration, isolated trials, timeouts
 │   ├── ledger.js              append-only JSONL event log
+│   ├── pack.js                evidence-pack writer + SHA-256 manifest
 │   ├── verify.js              isolated verifier exec + CTRF/reward parsing
 │   ├── tasks.js               Harbor-subset loader (minimal TOML subset parser)
 │   ├── pricing.js             versioned pricing tables + peak/off-peak window math
 │   ├── claims.js              claim registry: freeze, validate, render
 │   ├── stats.js               Wilson CI, paired deltas, Pareto filter
 │   └── report.js              tune sheets + claims report (from raw artifacts only)
-├── tasks/                     Harbor layout per task (§6)
+├── tasks/                     Harbor layout per task (§6; t001 toy shipped M2)
 ├── configs/                   named tunes: native-droid, cache-stable-droid, byok-*
 ├── fixtures/                  synthetic sessions/configs for --demo + tests
 ├── test/                      node --test suites (zero-dep)
@@ -341,12 +346,17 @@ hidden) → paired per-task deltas → Wilson-CI'd yields → Pareto frontier
 |---|---|---|
 | M1 | 1–2 | Scaffold; `sessions.js` reader; `diagnose` MVP (version stamp, config snapshot, session tokenUsage dump, obvious-fault detection); BYOK `--probe` round-trip; harness hints; `--demo` fixtures; README stub + LICENSE ✅ 2026-08-18 |
 | M2 | 3–4 | `runner.js` + `ledger.js` + evidence packs; one toy task end-to-end through `droid exec` ✅ 2026-08-18 (t001 VERIFIED_PASS, Zen free route, $0) |
-| M3 | 5–6 | `verify.js` (isolation invariant, git hygiene, CTRF/reward); tri-force CI |
+| M3 | 5–6 | `verify.js` (isolation invariant, git hygiene, CTRF/reward); tri-force CI ✅ 2026-08-18 (62 tests, 7/7 triforce legs green) |
 | M4 | 7–8 | Author 6–8 tasks (incl. 1–2 memex filesystem-torture); 3× flake check |
 | M5 | 9–10 | `pricing.js`; baseline runs for `native-droid`; freeze first claim entries |
 | M6 | 11–12 | Tune arms (`cache-stable-droid` + BYOK models); pilot n=3 |
 | M7 | 13 | Confirmatory paired runs n=5 (finalists only) |
 | M8 | 14 | Tune sheet + claims report + 60-second demo + README/disclaimer → publish → Guild submission |
+
+**M2 packs are development artifacts, not claim evidence.** They intentionally
+omit `pricing.json` until M5 and do not satisfy the M3 verifier/tri-force gate.
+The Claims Integrity Protocol still requires the complete §8.4 pack before a
+number may appear publicly.
 
 **Budget guardrail:** pilot n=3, confirmatory n=5 finalists only; rough v0
 envelope at V4-Flash off-peak ≈ $0.07/trial (100k output tokens) → full v0

@@ -11,10 +11,11 @@ data.
 > **Unofficial community project. Not affiliated with Factory.**
 > "Factory Droid" is referenced as the measured product, nominative use only.
 
-**Status: M2** — `diagnose` (session telemetry, config health, faults/hints,
-BYOK probe) and `trial` (one task end-to-end through `droid exec` with a
-full evidence pack) are live. Baseline/tune/verify/monitor land in later
-milestones. See [`PLAN.md`](PLAN.md).
+**Status: M2 complete** — `diagnose` (session telemetry, config health,
+faults/hints, BYOK probe) and `trial` (one task end-to-end through `droid
+exec` with a hash-manifested development evidence pack) are live. M3 adds the
+hardened verifier and tri-force validation; pricing and claim-eligible packs
+arrive at M5. See [`PLAN.md`](PLAN.md).
 
 ## Requirements
 
@@ -36,7 +37,18 @@ node bin/droidtune.js diagnose          # offline: version, config, sessions
 node bin/droidtune.js diagnose --json   # machine-readable
 ```
 
-Exit codes: `0` clean · `1` faults found · `2` usage error.
+Run the included toy task through a configured BYOK model:
+
+```sh
+source ~/.factory/env.sh
+node bin/droidtune.js trial \
+  --task tasks/t001-greet-script \
+  --model deepseek-v4-flash-free \
+  --tune m2-smoke
+```
+
+Exit codes: `0` clean or `VERIFIED_PASS` · `1` faults or another trial
+outcome · `2` usage error.
 
 ## Commands
 
@@ -45,10 +57,16 @@ Exit codes: `0` clean · `1` faults found · `2` usage error.
 | `diagnose` | Version stamp, redacted config snapshot, session token/cache dump, faults + harness hints |
 | `diagnose --probe [model]` | Live round-trip through `droid exec` on a BYOK custom model; asserts the session lands with disjoint cache fields. Opt-in (spends your BYOK credits/points) |
 | `diagnose --demo` | Same pipeline against bundled fixtures — no Droid install needed |
-| `trial --task <dir>` | Runs one task end-to-end through `droid exec` (isolated worktree, frozen tests copied in only after the agent commits) and writes a hash-manifested evidence pack |
+| `trial --task <dir>` | Runs one task end-to-end through `droid exec` (isolated temporary repo, frozen tests copied into a fresh grading copy only after the agent commits) and writes a hash-manifested development evidence pack |
 
-Flags: `--sessions-dir <path>` · `--config <file>` · `--droid-path <path>` ·
-`--limit <n>` · `--json`.
+Diagnose flags: `--probe [model]` · `--demo` · `--limit <n>` · `--json`.
+
+Trial flags: `--task <dir>` · `--model <id-or-substring>` · `--tune <name>` ·
+`--attempt <n>` · `--auto <low|medium|high>` · `--timeout-ms <n>` ·
+`--runs-dir <path>` · `--json`.
+
+Common overrides: `--sessions-dir <path>` · `--config <file>` ·
+`--droid-path <path>`.
 
 ### Findings
 
@@ -67,8 +85,22 @@ Hints (advisory, evidence-linked): `DT101` coding-endpoint tool-call risk ·
 - `--probe` drives `droid exec` headless with a custom model, tagging the
   session (`--tag droidtune-probe`) so probe runs are self-identifying and
   excluded from your session aggregates.
-- Later milestones run full task suites through `droid exec` with paired
-  trials and frozen evidence packs (see `PLAN.md` §6–§8).
+- `trial` drives a task through `droid exec`, records the tagged Droid session,
+  extracts the committed patch, grades it against tests the agent never saw,
+  and freezes the artifacts under `runs/<tune>/<task>/attempt-N/`.
+- Later milestones add hardened CTRF verification, task-suite controls,
+  paired trials, pricing, and claim-registry enforcement (see `PLAN.md` §6–§8).
+
+## Evidence packs
+
+M2 packs include provenance, instruction, redacted config snapshot, event
+ledger, transcript when Droid emitted one, committed patch, frozen tests,
+results, usage, errors when present, and a SHA-256 manifest. Local development
+packs under `runs/` are gitignored.
+
+These M2 packs are **not public-claim evidence**: pricing is not implemented
+until M5, and M3 still needs to harden verification and add tri-force controls.
+No transcript, verifier provenance, or pricing snapshot means no claim.
 
 ## BYOK recipe (`${ENV_VAR}` keys, never plaintext)
 

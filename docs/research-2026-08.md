@@ -247,8 +247,9 @@ runtime). 16 documented findings, 10 normative contract rules (C1–C10),
   worker, sol-strategist, sequential-delivery-worker, scrutiny-feature-
   reviewer, user-testing-flow-validator), plugins/, settings.json.
 - `settings.json` `customModels`: GLM-5.1 + GLM-4.7 via Z.AI (anthropic +
-  OpenAI-compatible endpoints). **Plaintext API key present — rotate before
-  M5.**
+  OpenAI-compatible endpoints) at initial inspection. M1 relocated the shared
+  plaintext key to `~/.factory/env.sh` (mode 600) and changed settings to
+  `${ZAI_API_KEY}`; provider-side rotation is still required before M5.
 - memex corpus: `matchKind()` (exact/normalization/case/compatibility) and
   pure `analyze(files)` seam in `~/Code/projects/memex/lib/` — reuse pattern
   for filesystem-torture tasks; APFS NFC/NFD collisions verified live.
@@ -269,7 +270,7 @@ runtime). 16 documented findings, 10 normative contract rules (C1–C10),
   bedrock. **OAuth refresh/access** (not BYOK-wireable): `github-copilot`,
   `openai` (Copilot additionally ToS-gray for external harnesses — excluded).
 - OpenCode Zen free-tier whitelist (25 models) in
-  `~/.config/opencode/opencode.json` `provider.opcode.whitelist`:
+  `~/.config/opencode/opencode.json` `provider.opencode.whitelist`:
   deepseek-v4-flash-free, glm-4.7-free, glm-5-free, hy3-free,
   hy3-preview-free, kimi-k2.5-free, laguna-s-2.1-free, ling-2.6/3.0-flash-free,
   ling-3.0-tiny-free, longcat-2.0-free, mimo-v2{flash,omni,pro,2.5}-free,
@@ -288,12 +289,14 @@ runtime). 16 documented findings, 10 normative contract rules (C1–C10),
   endpoint) and `deepseek-v4-flash-free`, `glm-5-free`, `kimi-k2.5-free`
   (Zen, `https://opencode.ai/zen/v1`, generic-chat-completion-api). Probe
   validated GLM-5.3 end-to-end (7.8s, disjoint cache fields present).
-- **First live trial through BYOK Zen (M2, 2026-08-18):** t001-greet-script
-  VERIFIED_PASS via `deepseek-v4-flash-free` under droid v0.197 — proves the
-  generic-chat-completion-api provider shape drives tool-using agent loops
-  end-to-end (commit + file write) at $0; 15.4s wall, 11.7k in / 1.1k out /
-  34.6k cacheRead. Evidence pack at
-  `runs/m2-live/t001-greet-script/attempt-1/` (local, not published).
+- **First live development trial through BYOK Zen (M2, 2026-08-18):**
+  t001-greet-script produced `VERIFIED_PASS` via `deepseek-v4-flash-free`
+  under droid v0.197. This is integration evidence (generic OpenAI-compatible
+  route → tool-using loop → commit → isolated deterministic test), **not a
+  benchmark claim**: one toy task, n=1, no pricing snapshot, no M3 tri-force
+  gate. Observed: 15.4s wall, 11.7k input / 1.1k output / 34.6k cache-read
+  tokens. Local pack:
+  `runs/m2-live/t001-greet-script/attempt-1/` (gitignored, not published).
 
 ## 7. Key source URLs
 
