@@ -78,6 +78,32 @@ test('fail mode → DROID_ERROR with errors.json', async () => {
   }
 })
 
+test('S2: 0-turn provider rejection → PROVIDER_ERROR', async () => {
+  const ctx = makeEnv('provfail')
+  try {
+    const r = await runTrial({ taskDir, model: 'custom:fake-0', droidPath: fakeDroid, sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir, env: ctx.env })
+    assert.equal(r.outcome, 'PROVIDER_ERROR')
+    const errors = JSON.parse(readFileSync(path.join(ctx.packDir(r), 'errors.json'), 'utf8'))
+    assert.match(String(errors.providerDetail), /429|rate limit/i)
+  } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('S2: multi-turn failure mentioning quota → DROID_ERROR (not laundered)', async () => {
+  const ctx = makeEnv('multiturnfail')
+  try {
+    const r = await runTrial({ taskDir, model: 'custom:fake-0', droidPath: fakeDroid, sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir, env: ctx.env })
+    // num_turns>0 must keep this OUT of the excludable PROVIDER_ERROR class
+    // even though the result text says "quota/overloaded" (§8.8).
+    assert.equal(r.outcome, 'DROID_ERROR')
+  } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
 test('hang mode with short timeout → TIMEOUT', async () => {
   const ctx = makeEnv('hang')
   try {

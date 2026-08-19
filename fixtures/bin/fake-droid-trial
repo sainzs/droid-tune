@@ -27,6 +27,18 @@ case "$MODE" in
     echo "fake droid failure" >&2
     exit 3
     ;;
+  provfail)
+    # Cleanly-reported provider rejection: trusted result envelope, is_error,
+    # zero turns. The runner must classify this PROVIDER_ERROR.
+    printf '%s\n' '{"type":"result","subtype":"failure","is_error":true,"duration_ms":5000,"num_turns":0,"result":"BYOK Error: 429 rate limit","session_id":"fake-prov-0000","usage":{"input_tokens":0,"output_tokens":0}}'
+    exit 1
+    ;;
+  multiturnfail)
+    # A REAL multi-turn task failure whose free-text mentions quota/overloaded.
+    # num_turns>0 must keep this OUT of PROVIDER_ERROR (anti retry-grooming §8.8).
+    printf '%s\n' '{"type":"result","subtype":"failure","is_error":true,"duration_ms":9000,"num_turns":3,"result":"provider said overloaded / quota exceeded after edits","session_id":"fake-multi-0000","usage":{"input_tokens":1200,"output_tokens":300}}'
+    exit 1
+    ;;
   hang)
     sleep 60
     exit 0
