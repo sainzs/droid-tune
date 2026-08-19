@@ -340,7 +340,7 @@ hidden) → paired per-task deltas → Wilson-CI'd yields → Pareto frontier
 | # | Days | Deliverable |
 |---|---|---|
 | M1 | 1–2 | Scaffold; `sessions.js` reader; `diagnose` MVP (version stamp, config snapshot, session tokenUsage dump, obvious-fault detection); BYOK `--probe` round-trip; harness hints; `--demo` fixtures; README stub + LICENSE ✅ 2026-08-18 |
-| M2 | 3–4 | `runner.js` + `ledger.js` + evidence packs; one toy task end-to-end through `droid exec` |
+| M2 | 3–4 | `runner.js` + `ledger.js` + evidence packs; one toy task end-to-end through `droid exec` ✅ 2026-08-18 (t001 VERIFIED_PASS, Zen free route, $0) |
 | M3 | 5–6 | `verify.js` (isolation invariant, git hygiene, CTRF/reward); tri-force CI |
 | M4 | 7–8 | Author 6–8 tasks (incl. 1–2 memex filesystem-torture); 3× flake check |
 | M5 | 9–10 | `pricing.js`; baseline runs for `native-droid`; freeze first claim entries |

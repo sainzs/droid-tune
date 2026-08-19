@@ -288,6 +288,12 @@ runtime). 16 documented findings, 10 normative contract rules (C1–C10),
   endpoint) and `deepseek-v4-flash-free`, `glm-5-free`, `kimi-k2.5-free`
   (Zen, `https://opencode.ai/zen/v1`, generic-chat-completion-api). Probe
   validated GLM-5.3 end-to-end (7.8s, disjoint cache fields present).
+- **First live trial through BYOK Zen (M2, 2026-08-18):** t001-greet-script
+  VERIFIED_PASS via `deepseek-v4-flash-free` under droid v0.197 — proves the
+  generic-chat-completion-api provider shape drives tool-using agent loops
+  end-to-end (commit + file write) at $0; 15.4s wall, 11.7k in / 1.1k out /
+  34.6k cacheRead. Evidence pack at
+  `runs/m2-live/t001-greet-script/attempt-1/` (local, not published).
 
 ## 7. Key source URLs
 

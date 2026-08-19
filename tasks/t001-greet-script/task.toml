@@ -1,0 +1,6 @@
+id = "t001-greet-script"
+title = "Create greet.sh printing an exact line"
+category = "terminal-native"
+language = "bash"
+timeout_s = 300
+canary = "droidtune-t001-greet-script"

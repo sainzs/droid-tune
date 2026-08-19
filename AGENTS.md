@@ -4,9 +4,9 @@ Droid Tune-Up: open-source diagnostic, tuning, and verification toolkit for
 Factory Droid — measures and maximizes **verified** engineering work per
 dollar. Built as a Factory Guild submission (factory.ai/ambassador).
 
-**Status: M1 shipped (2026-08-18).** `PLAN.md` is the source of truth;
-`docs/research-2026-08.md` is the verified evidence base. Next: M2
-(`runner.js` + `ledger.js` + evidence packs, one toy task end-to-end).
+**Status: M2 shipped (2026-08-18).** `PLAN.md` is the source of truth;
+`docs/research-2026-08.md` is the verified evidence base. Next: M3
+(`verify.js` hardening, git hygiene, CTRF parsing, tri-force CI).
 
 ## Commands
 
@@ -14,13 +14,20 @@ dollar. Built as a Factory Guild submission (factory.ai/ambassador).
 node bin/droidtune.js diagnose [--json] [--demo] [--probe [model]]
                                [--sessions-dir D] [--config F]
                                [--droid-path P] [--limit N]
+node bin/droidtune.js trial --task <dir> [--model m] [--tune name]
+                            [--auto high|medium|low] [--timeout-ms N]
+                            [--runs-dir D] [--attempt N] [common flags]
 npm run check        # node --test + CLI smoke (CI parity)
 ```
 
-Exit codes: 0 clean · 1 faults · 2 usage. Fault/hint IDs are stable
-(`DT001`–`DT009`, `DT101`–`DT104`, `DT-P00x`); `--demo` runs bundled fixtures
-with no Droid install. `--probe` spends BYOK credits (opt-in) and tags its
-session `droidtune-probe` (excluded from aggregates). BYOK keys live in
+Exit codes: 0 clean/VERIFIED_PASS · 1 faults or non-pass outcome · 2 usage.
+Fault/hint IDs are stable (`DT001`–`DT009`, `DT101`–`DT104`, `DT-P00x`);
+`--demo` runs bundled fixtures with no Droid install. `--probe` spends BYOK
+credits (opt-in). `trial` runs one task end-to-end through `droid exec`
+(automony high, `droidtune-trial` tagged session) and writes an evidence
+pack under `runs/<tune>/<task>/attempt-N/` (gitignored; published packs come
+with M5 baselines). First live trial 2026-08-18: t001 VERIFIED_PASS via
+`deepseek-v4-flash-free` (Zen free) in 15.4s at $0. BYOK keys live in
 `~/.factory/env.sh` (mode 600, `${ENV_VAR}` refs in `~/.factory/settings.json`).
 
 ## Invariants
@@ -43,9 +50,10 @@ session `droidtune-probe` (excluded from aggregates). BYOK keys live in
 - Vendor-neutral language for runtime-architecture concepts; DeepSeek and
   other influences are credited in docs, never in branding.
 
-## Definition of done (M1) — met 2026-08-18
+## Definition of done (M2) — met 2026-08-18
 
-Scaffold + `sessions.js` two-level reader + `diagnose` MVP (stamp, redacted
-snapshot, session dump, DT-id faults/hints, `--demo`, `--probe`) shipped;
-28 tests + `npm run check` green; BYOK wiring done (env.sh, GLM-5.3 + Zen
-free routes, probe-validated); docs synced. Build continues at M2.
+`lib/ledger.js` (append-only JSONL) + `lib/pack.js` (evidence packs with
+sha256 manifests) + `lib/runner.js` (droid exec orchestration, outcome
+classes, isolation-invariant grading, budget gates) + `trial` CLI + toy task
+`t001-greet-script`; 49 tests green; live end-to-end VERIFIED_PASS via Zen
+free route. Build continues at M3.

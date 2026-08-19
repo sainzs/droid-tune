@@ -11,8 +11,9 @@ data.
 > **Unofficial community project. Not affiliated with Factory.**
 > "Factory Droid" is referenced as the measured product, nominative use only.
 
-**Status: M1** — `diagnose` MVP (session telemetry reader, config health,
-fault detection, BYOK exec probe). Baseline/tune/verify/monitor land in later
+**Status: M2** — `diagnose` (session telemetry, config health, faults/hints,
+BYOK probe) and `trial` (one task end-to-end through `droid exec` with a
+full evidence pack) are live. Baseline/tune/verify/monitor land in later
 milestones. See [`PLAN.md`](PLAN.md).
 
 ## Requirements
@@ -44,6 +45,7 @@ Exit codes: `0` clean · `1` faults found · `2` usage error.
 | `diagnose` | Version stamp, redacted config snapshot, session token/cache dump, faults + harness hints |
 | `diagnose --probe [model]` | Live round-trip through `droid exec` on a BYOK custom model; asserts the session lands with disjoint cache fields. Opt-in (spends your BYOK credits/points) |
 | `diagnose --demo` | Same pipeline against bundled fixtures — no Droid install needed |
+| `trial --task <dir>` | Runs one task end-to-end through `droid exec` (isolated worktree, frozen tests copied in only after the agent commits) and writes a hash-manifested evidence pack |
 
 Flags: `--sessions-dir <path>` · `--config <file>` · `--droid-path <path>` ·
 `--limit <n>` · `--json`.
