@@ -1,0 +1,32 @@
+{
+  "customModels": [
+    {
+      "model": "glm-5.1",
+      "id": "custom:GLM-5.1-[Z.AI-Coding-Plan]-0",
+      "index": 0,
+      "baseUrl": "https://api.z.ai/api/anthropic",
+      "apiKey": "${ZAI_API_KEY}",
+      "displayName": "GLM-5.1 [Z.AI Coding Plan]",
+      "provider": "anthropic"
+    },
+    {
+      "model": "glm-4.7",
+      "id": "custom:GLM-4.7-[Coding]-1",
+      "index": 1,
+      "baseUrl": "https://api.z.ai/api/coding/paas/v4",
+      "apiKey": "sk-fixture-plaintext-DO-NOT-USE",
+      "displayName": "GLM-4.7 [Coding endpoint]",
+      "provider": "generic-chat-completion-api"
+    }
+  ],
+  "sessionDefaultSettings": {
+    "model": "inkling",
+    "reasoningEffort": "high"
+  },
+  "compactionModel": "gpt-5.6-luna",
+  "subagentModelSettings": {
+    "lightModel": "gpt-5.6-luna",
+    "mediumModel": "deepseek-v4-flash-0731",
+    "heavyModel": "deepseek-v4-pro"
+  }
+}

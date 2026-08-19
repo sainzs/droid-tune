@@ -158,11 +158,13 @@ droid-tune/
 ├── AGENTS.md
 ├── PLAN.md                    (this file)
 ├── README.md                  (M8: quickstart, disclaimer, how it uses Droid)
+├── LICENSE                    (MIT)
 ├── docs/research-2026-08.md   (verified evidence base + citations)
 ├── bin/droidtune.js           (hand-rolled args; exit codes 0/1/2 like memex)
 ├── lib/
 │   ├── diagnose.js            protocol + cache + config probes
-│   ├── sessions.js            ~/.factory/sessions reader (settings.json + jsonl)
+│   ├── sessions.js            ~/.factory/sessions reader — two-level
+│   │                          <encoded-cwd>/<uuid> pairs (settings.json + jsonl)
 │   ├── runner.js              droid exec orchestration, paired trials, timeouts
 │   ├── ledger.js              append-only JSONL event log
 │   ├── verify.js              isolated verifier exec + CTRF/reward parsing
@@ -173,6 +175,8 @@ droid-tune/
 │   └── report.js              tune sheets + claims report (from raw artifacts only)
 ├── tasks/                     Harbor layout per task (§6)
 ├── configs/                   named tunes: native-droid, cache-stable-droid, byok-*
+├── fixtures/                  synthetic sessions/configs for --demo + tests
+├── test/                      node --test suites (zero-dep)
 ├── proxy/                     (v1, deferred) local BYOK telemetry proxy — hashes only
 └── .github/workflows/ci.yml   tri-force validation + claim-registry CI
 ```
@@ -335,7 +339,7 @@ hidden) → paired per-task deltas → Wilson-CI'd yields → Pareto frontier
 
 | # | Days | Deliverable |
 |---|---|---|
-| M1 | 1–2 | Scaffold; `sessions.js` reader; `diagnose` MVP (version stamp, config snapshot, session tokenUsage dump, obvious-fault detection) |
+| M1 | 1–2 | Scaffold; `sessions.js` reader; `diagnose` MVP (version stamp, config snapshot, session tokenUsage dump, obvious-fault detection); BYOK `--probe` round-trip; harness hints; `--demo` fixtures; README stub + LICENSE ✅ 2026-08-18 |
 | M2 | 3–4 | `runner.js` + `ledger.js` + evidence packs; one toy task end-to-end through `droid exec` |
 | M3 | 5–6 | `verify.js` (isolation invariant, git hygiene, CTRF/reward); tri-force CI |
 | M4 | 7–8 | Author 6–8 tasks (incl. 1–2 memex filesystem-torture); 3× flake check |
@@ -346,7 +350,10 @@ hidden) → paired per-task deltas → Wilson-CI'd yields → Pareto frontier
 
 **Budget guardrail:** pilot n=3, confirmatory n=5 finalists only; rough v0
 envelope at V4-Flash off-peak ≈ $0.07/trial (100k output tokens) → full v0
-well under $100. Hard budget flag in the runner; abort over cap.
+well under $100. Hard budget flag in the runner; abort over cap. Free BYOK
+routes (OpenCode Zen free tier, wired 2026-08-18 — research §6) cover M4
+flake-checks and M6 pilots at $0; paid routes are reserved for M7
+confirmatory runs.
 
 **North star (post-submission, in order):**
 
@@ -405,12 +412,23 @@ present · all links live · claims registry CI green.
 ## 13. Local environment facts (verified 2026-08-18)
 
 - Droid v0.197.0 at `~/.local/bin/droid`; latest is v0.198.0 (2026-08-17).
-- `~/.factory/`: `sessions/`, `droids/` (opus-planner, luna-research-worker,
-  luna-review-worker, sol-strategist, sequential-delivery-worker,
-  scrutiny-feature-reviewer, user-testing-flow-validator), `plugins/`,
-  `settings.json` with Z.AI GLM customModels.
-- **⚠ `~/.factory/settings.json` contains a live Z.AI API key in plaintext.
-  Rotate it and switch to the `${ENV_VAR}` form before M5 config snapshots.**
+- `~/.factory/`: `sessions/` (**two-level**: `<encoded-cwd>/<uuid>.settings.json`
+  + `.jsonl` — verified live 2026-08-18), `droids/` (opus-planner,
+  luna-research-worker, luna-review-worker, sol-strategist,
+  sequential-delivery-worker, scrutiny-feature-reviewer,
+  user-testing-flow-validator), `plugins/`, `settings.json`, `env.sh`
+  (600-mode BYOK keys, added M1).
+- Session settings carry `tokenUsage.{inputTokens, outputTokens,
+  cacheReadTokens, cacheCreationTokens, thinkingTokens, factoryCredits}`,
+  `inclusiveTokenUsage`, `providerLock`, `assistantActiveTimeMs`,
+  `tags [{name:"exec"}]`. **Route-class lesson (probe, 2026-08-18):**
+  `factoryCredits` is present-but-0 on BYOK sessions under droid 0.197 —
+  the reliable discriminator is the `custom:` model prefix.
+- **Key hygiene (updated M1):** the plaintext Z.AI key was relocated to
+  `~/.factory/env.sh` (mode 600, sourced from `~/.zshrc`, referenced as
+  `${ZAI_API_KEY}`); GLM-5.3 + three Zen free routes wired the same way.
+  Rotation at the Z.AI console is still recommended before M5 config
+  snapshots.
 - memex (`~/Code/projects/memex`) provides `matchKind()` / `analyze()` for
   filesystem-torture tasks — import the approach, not the dep.
 - `~/Code/projects/mini-swe-subs` — guarded mini-swe-agent runner + prior

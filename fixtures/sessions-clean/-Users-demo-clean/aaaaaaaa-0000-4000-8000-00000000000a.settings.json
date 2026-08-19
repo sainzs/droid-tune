@@ -1,0 +1,14 @@
+{
+  "model": "claude-sonnet-4-6",
+  "reasoningEffort": "low",
+  "tags": [{ "name": "exec" }],
+  "tokenUsage": {
+    "inputTokens": 500,
+    "outputTokens": 800,
+    "cacheCreationTokens": 2000,
+    "cacheReadTokens": 20000,
+    "thinkingTokens": 10,
+    "factoryCredits": 999
+  },
+  "providerLock": "anthropic"
+}

@@ -1,0 +1,14 @@
+{
+  "model": "claude-sonnet-4-6",
+  "reasoningEffort": "low",
+  "tags": [{ "name": "droidtune-probe" }],
+  "tokenUsage": {
+    "inputTokens": 5,
+    "outputTokens": 3,
+    "cacheCreationTokens": 100,
+    "cacheReadTokens": 0,
+    "thinkingTokens": 0,
+    "factoryCredits": 7
+  },
+  "providerLock": "anthropic"
+}

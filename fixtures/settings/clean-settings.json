@@ -1,0 +1,23 @@
+{
+  "customModels": [
+    {
+      "model": "glm-5.3",
+      "id": "custom:GLM-5.3-[Z.AI-Coding-Plan]-0",
+      "index": 0,
+      "baseUrl": "https://api.z.ai/api/anthropic",
+      "apiKey": "${ZAI_API_KEY}",
+      "displayName": "GLM-5.3 [Z.AI Coding Plan]",
+      "provider": "anthropic"
+    }
+  ],
+  "sessionDefaultSettings": {
+    "model": "glm-5.3",
+    "reasoningEffort": "low"
+  },
+  "compactionModel": "custom:GLM-5.3-[Z.AI-Coding-Plan]-0",
+  "subagentModelSettings": {
+    "lightModel": "custom:GLM-5.3-[Z.AI-Coding-Plan]-0",
+    "mediumModel": "custom:GLM-5.3-[Z.AI-Coding-Plan]-0",
+    "heavyModel": "custom:GLM-5.3-[Z.AI-Coding-Plan]-0"
+  }
+}

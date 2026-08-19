@@ -1,0 +1,4 @@
+{"type":"session_start","id":"s1","version":"0.197.0","cwd":"/Users/demo/app","title":"fixture core session","timestamp":"2026-08-17T10:00:00.000Z"}
+{"type":"message","id":"m1","timestamp":"2026-08-17T10:00:01.000Z","message":{"role":"user","content":"do the thing"}}
+{"type":"message","id":"m2","timestamp":"2026-08-17T10:01:00.000Z","message":{"role":"assistant","content":[{"type":"text","text":"done"}],"modelId":"claude-sonnet-4-6","reasoningEffort":"low"}}
+{"type":"todo_state","id":"t1","timestamp":"2026-08-17T10:00:30.000Z","todos":[]}

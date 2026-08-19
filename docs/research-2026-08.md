@@ -37,12 +37,25 @@ subagents, changelog), https://github.com/Factory-AI.
   `displayName`, `baseUrl`, `apiKey` (supports `${ENV}`), `provider`
   (`anthropic` | `openai` | `generic-chat-completion-api`),
   `maxOutputTokens`, `noImageSupport`, `apiKeyHelper`, `extraHeaders`.
-- Session telemetry: `~/.factory/sessions/<id>.settings.json` →
+- Session telemetry (layout verified live 2026-08-18):
+  `~/.factory/sessions/<encoded-cwd>/<uuid>.settings.json` + `<uuid>.jsonl` —
+  **two-level, grouped per working directory** (dir names are path-encoded but
+  ambiguous to decode; treat as opaque keys). Settings carry
   `tokenUsage.{inputTokens, outputTokens, cacheReadTokens,
-  cacheCreationTokens, thinkingTokens}` + `.jsonl` transcript. Session-level
-  totals only (no per-message usage). Documented independently by OpenUsage
-  (openusage.sh/docs/providers/droid), ccusage, SuperBased, toktrail,
-  llm-usage-metrics.
+  cacheCreationTokens, thinkingTokens, factoryCredits}` +
+  `inclusiveTokenUsage`, `childInclusiveTokenUsageBySessionId`,
+  `lastCallTokenUsage`, `providerLock`, `assistantActiveTimeMs`,
+  `tags [{name:"exec"}]`; `tokenUsage` may be null on real sessions.
+  jsonl events: `session_start {version, cwd, title}`, `message {message:
+  {role, content, modelId, reasoningEffort}, timestamp}`, `todo_state`.
+  Session-level totals only (no per-message usage). Documented independently
+  by OpenUsage (openusage.sh/docs/providers/droid), ccusage, SuperBased,
+  toktrail, llm-usage-metrics.
+- **Route-class finding (droidtune probe, 2026-08-18):** `factoryCredits` is
+  present-but-0 on BYOK custom-model sessions under droid v0.197 (older
+  sessions omit the field entirely). The reliable native-vs-BYOK
+  discriminator is the `custom:` prefix on the session model, not
+  `factoryCredits` presence.
 - In-session: `/cost`, `/stats [period]`, `/context`, `/model`, `/compress`.
 - Hooks: 9 events (PreToolUse w/ `permissionDecision`
   allow/deny/ask + `updatedInput`, PostToolUse, UserPromptSubmit,
@@ -246,6 +259,35 @@ runtime). 16 documented findings, 10 normative contract rules (C1–C10),
   project, no merge.
 - `santiagosainz-skills`: dormant skills repo (Codex/OpenCode/Pi) — candidate
   Guild submission #2 (add Droid plugin target) after this project ships.
+
+### BYOK candidates on this machine (verified 2026-08-18)
+
+- `~/.local/share/opencode/auth.json` key shapes (values never inspected):
+  **static API keys** (BYOK-wireable via `${ENV_VAR}`): `opencode` (Zen, 67
+  chars), `opencode-go` (67), `commandcode` (93), `zai-coding-plan` (49),
+  `kimi-code` (72), `mimo` (51), `zenmux` (73), `github-models` (24), azure,
+  bedrock. **OAuth refresh/access** (not BYOK-wireable): `github-copilot`,
+  `openai` (Copilot additionally ToS-gray for external harnesses — excluded).
+- OpenCode Zen free-tier whitelist (25 models) in
+  `~/.config/opencode/opencode.json` `provider.opcode.whitelist`:
+  deepseek-v4-flash-free, glm-4.7-free, glm-5-free, hy3-free,
+  hy3-preview-free, kimi-k2.5-free, laguna-s-2.1-free, ling-2.6/3.0-flash-free,
+  ling-3.0-tiny-free, longcat-2.0-free, mimo-v2{flash,omni,pro,2.5}-free,
+  minimax-m{2.1,2.5,3}-free, nemotron-3-{super,ultra,3.5-lightning}-free,
+  north-mini-code-free, qwen3.6-plus-free, ring-2.6-1t-free,
+  trinity-large-preview-free.
+- Command Code provider: `https://api.commandcode.ai/provider/v1`
+  (OpenAI-compatible), models deepseek-v4-pro, deepseek-v4-flash, gpt-5.6-luna.
+- `droid exec` flags confirmed live: `-m/--model` accepts `custom:` ids ·
+  `--cwd` (probe isolation) · `--tag` (lands in session settings `tags` —
+  probe sessions self-identify) · `-o text|json|stream-json|stream-jsonrpc` ·
+  default autonomy is read-only (a reply-only prompt needs no permissions).
+- **Wiring done 2026-08-18 (M1):** `~/.factory/env.sh` (mode 600, sourced from
+  `~/.zshrc`) exports `ZAI_API_KEY` + `OPENCODE_ZEN_KEY`; all three existing
+  GLM entries converted to `${ZAI_API_KEY}`; added `glm-5.3` (Z.AI anthropic
+  endpoint) and `deepseek-v4-flash-free`, `glm-5-free`, `kimi-k2.5-free`
+  (Zen, `https://opencode.ai/zen/v1`, generic-chat-completion-api). Probe
+  validated GLM-5.3 end-to-end (7.8s, disjoint cache fields present).
 
 ## 7. Key source URLs
 

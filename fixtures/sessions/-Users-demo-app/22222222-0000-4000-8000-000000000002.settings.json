@@ -1,0 +1,13 @@
+{
+  "model": "custom:GLM-5.1-[Z.AI-Coding-Plan]-0",
+  "reasoningEffort": "high",
+  "tags": [{ "name": "exec" }],
+  "tokenUsage": {
+    "inputTokens": 2000,
+    "outputTokens": 500,
+    "cacheCreationTokens": 1000,
+    "cacheReadTokens": 8000,
+    "thinkingTokens": 50
+  },
+  "providerLock": "anthropic"
+}

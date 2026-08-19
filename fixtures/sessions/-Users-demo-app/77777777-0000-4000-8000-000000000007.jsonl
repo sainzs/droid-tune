@@ -1,0 +1,3 @@
+{"type":"session_start","id":"s7","version":"0.197.0","cwd":"/Users/demo/app","title":"fixture probe session","timestamp":"2026-08-18T09:00:00.000Z"}
+{"type":"message","id":"m1","timestamp":"2026-08-18T09:00:01.000Z","message":{"role":"user","content":"Reply with exactly: OK"}}
+{"type":"message","id":"m2","timestamp":"2026-08-18T09:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"OK"}],"modelId":"claude-sonnet-4-6"}}

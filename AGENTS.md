@@ -4,15 +4,24 @@ Droid Tune-Up: open-source diagnostic, tuning, and verification toolkit for
 Factory Droid — measures and maximizes **verified** engineering work per
 dollar. Built as a Factory Guild submission (factory.ai/ambassador).
 
-**Status: plan stage.** `PLAN.md` is the source of truth; `docs/research-2026-08.md`
-is the verified evidence base. No code exists yet — first code lands in
-PLAN.md §10 M1 (scaffold + `sessions.js` + `diagnose` MVP).
+**Status: M1 shipped (2026-08-18).** `PLAN.md` is the source of truth;
+`docs/research-2026-08.md` is the verified evidence base. Next: M2
+(`runner.js` + `ledger.js` + evidence packs, one toy task end-to-end).
 
 ## Commands
 
-None yet (plan stage). When M1 lands: `node bin/droidtune.js <cmd>` with exit
-codes 0 clean / 1 faults / 2 usage, hand-rolled arg parsing, `npm run check`
-for CI parity.
+```sh
+node bin/droidtune.js diagnose [--json] [--demo] [--probe [model]]
+                               [--sessions-dir D] [--config F]
+                               [--droid-path P] [--limit N]
+npm run check        # node --test + CLI smoke (CI parity)
+```
+
+Exit codes: 0 clean · 1 faults · 2 usage. Fault/hint IDs are stable
+(`DT001`–`DT009`, `DT101`–`DT104`, `DT-P00x`); `--demo` runs bundled fixtures
+with no Droid install. `--probe` spends BYOK credits (opt-in) and tags its
+session `droidtune-probe` (excluded from aggregates). BYOK keys live in
+`~/.factory/env.sh` (mode 600, `${ENV_VAR}` refs in `~/.factory/settings.json`).
 
 ## Invariants
 
@@ -26,14 +35,17 @@ for CI parity.
   tests, results, usage, pricing). No transcript → no claim.
 - LLM judges are barred from pass/fail. Deterministic behavioral tests only.
 - The agent worktree never contains `tests/` or `solution/`.
-- Never commit API keys. `~/.factory/settings.json` holds a live Z.AI key
-  that must be rotated before M5 config snapshots.
+- Never commit API keys. Keys live in `~/.factory/env.sh` (mode 600), never
+  in the repo or `~/.factory/settings.json` (which uses `${ENV_VAR}` refs).
+  Rotate the Z.AI key at the provider console before M5 config snapshots.
 - The telemetry proxy (v1, deferred) stores hashes, lengths, and counters —
   never prompt contents.
 - Vendor-neutral language for runtime-architecture concepts; DeepSeek and
   other influences are credited in docs, never in branding.
 
-## Definition of done (plan stage)
+## Definition of done (M1) — met 2026-08-18
 
-This file, `PLAN.md`, and `docs/research-2026-08.md` committed; workspace map
-row added. Build begins at M1.
+Scaffold + `sessions.js` two-level reader + `diagnose` MVP (stamp, redacted
+snapshot, session dump, DT-id faults/hints, `--demo`, `--probe`) shipped;
+28 tests + `npm run check` green; BYOK wiring done (env.sh, GLM-5.3 + Zen
+free routes, probe-validated); docs synced. Build continues at M2.

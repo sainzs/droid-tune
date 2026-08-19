@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "0.197.0 (fixture)"
+exit 0
