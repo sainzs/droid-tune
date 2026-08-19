@@ -1,16 +1,22 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { runDiagnose } from '../lib/diagnose.js'
 import { renderDiagnose } from '../lib/report.js'
 import { runTrial } from '../lib/runner.js'
+import { makeRunOne, runTriforce } from '../lib/triforce.js'
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 const USAGE = `droidtune — Droid Tune-Up: diagnose, tune, verify (more verified work, fewer wasted tokens)
 
 Usage:
   droidtune diagnose [flags]     Check protocol, model routing, cache, and configuration health
   droidtune trial [flags]        Run one task end-to-end through droid exec; write an evidence pack
+  droidtune run <task> [flags]   Grade a task offline (oracle/--noop/--cheat) — triforce self-test
+  droidtune triforce             Run the offline tri-force self-test (7 legs)
 
 diagnose flags:
   --json                 Machine-readable output
@@ -29,6 +35,11 @@ trial flags:
   --auto <level>         Autonomy: low|medium|high (default high)
   --timeout-ms <n>       Per-trial timeout (default 300000)
   --runs-dir <path>      Evidence-pack root (default ./runs)
+
+run flags:
+  --offline              Offline grading (no droid); apply the task oracle solution
+  --noop                 Grade an empty diff (no solution applied)
+  --cheat <name>         Run tasks/<id>/cheats/<name>.sh instead of the real tests
 
 common flags:
   --sessions-dir <path>  Override ~/.factory/sessions
@@ -63,7 +74,8 @@ const VALUE_FLAGS = new Map([
   ['--auto', 'auto'],
   ['--timeout-ms', 'timeoutMs'],
   ['--runs-dir', 'runsDir'],
-  ['--attempt', 'attempt']
+  ['--attempt', 'attempt'],
+  ['--cheat', 'cheat']
 ])
 
 function parseArgs (argv) {
@@ -79,6 +91,12 @@ function parseArgs (argv) {
     else if (a === '--probe') {
       const nx = rest[i + 1]
       if (nx !== undefined && !nx.startsWith('-')) { opts.probe = nx; i++ } else opts.probe = ''
+    } else if (a === '--offline') {
+      opts.offline = true
+    } else if (a === '--noop') {
+      opts.noop = true
+    } else if (cmd === 'run' && !a.startsWith('-') && opts.task === undefined) {
+      opts.task = a
     } else if (VALUE_FLAGS.has(a)) {
       const v = rest[++i]
       if (v === undefined || v.startsWith('-')) usageError(`missing value for ${a}`)
@@ -153,10 +171,55 @@ async function cmdTrial (opts) {
   process.exitCode = result.outcome === 'VERIFIED_PASS' ? 0 : 1
 }
 
+function resolveTaskDir (task) {
+  if (path.isAbsolute(task)) return task
+  if (existsSync(task)) return path.resolve(task)
+  const underTasks = path.join(REPO_ROOT, 'tasks', task)
+  if (existsSync(underTasks)) return underTasks
+  // Allow a short id like "t001" → tasks/t001-*.
+  try {
+    const tasksDir = path.join(REPO_ROOT, 'tasks')
+    const matches = readdirSync(tasksDir).filter(d => d === task || d.startsWith(task + '-'))
+    if (matches.length === 1) return path.join(tasksDir, matches[0])
+  } catch {}
+  return underTasks
+}
+
+async function cmdRun (opts) {
+  if (!opts.task) usageError('run requires a task id or --task <dir>')
+  const taskDir = resolveTaskDir(opts.task)
+  if (!existsSync(taskDir)) usageError(`task not found: ${opts.task}`)
+  // The offline `run` command exists for triforce self-testing: it grades the
+  // oracle solution (or an empty diff, or a cheat script) with no droid call.
+  const result = await runTrial({
+    taskDir,
+    model: 'offline',
+    runsDir: opts.runsDir,
+    tuneName: opts.tune ?? 'selfcheck',
+    attempt: opts.attempt ?? Date.now(),
+    offline: true,
+    cheat: opts.cheat ?? null,
+    noop: !!opts.noop
+  })
+  process.stdout.write(`verdict=${result.outcome}\n`)
+  process.stdout.write(`task=${path.basename(taskDir)}\n`)
+  process.stdout.write(`pack=${result.manifestPath}\n`)
+  process.exitCode = 0
+}
+
+async function cmdTriforce () {
+  // makeRunOne shells back into this CLI from the repo root.
+  process.chdir(REPO_ROOT)
+  const { ok } = runTriforce(makeRunOne())
+  process.exitCode = ok ? 0 : 1
+}
+
 async function main () {
   const [cmd, opts] = parseArgs(process.argv.slice(2))
   if (cmd === 'help' || cmd === '--help' || cmd === '-h') usage(0)
   if (cmd === 'trial') return cmdTrial(opts)
+  if (cmd === 'run') return cmdRun(opts)
+  if (cmd === 'triforce') return cmdTriforce()
   if (cmd !== 'diagnose') usageError(`unknown command: ${cmd}`)
   if (opts.probe !== null && opts.demo) usageError('--probe cannot be combined with --demo')
   const result = await runDiagnose(opts)
