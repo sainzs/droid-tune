@@ -1,0 +1,45 @@
+{
+  "id": "dt-v1-ledger-lite-nosub",
+  "status": "preregistered",
+  "question": "On t004-git-surgery, does the ledger-lite tune reduce the NO_SUBMISSION rate relative to an otherwise identical no-tune arm, across four free BYOK routes?",
+  "hypothesis": "ledger-lite's explicit commit contract (\"ALWAYS commit completed work to git\"; an uncommitted working tree is not a submission) lowers the share of t004-git-surgery trials that end in NO_SUBMISSION, without lowering the VERIFIED_PASS rate.",
+  "rationale": "The M4 flake check (2026-08-19, docs/m4-flake-check-2026-08.md) observed 7 of 8 t004-git-surgery attempts ending in NO_SUBMISSION across these same four routes. The transcripts show the failure is not competence: models inspected the history, performed the surgery, exercised calc.sh, narrated success — and never ran `git commit`. t004 is therefore the discriminative instrument for a commit-discipline intervention, and ledger-lite's Finish section targets exactly that step.",
+  "population": ["t004-git-surgery"],
+  "arms": ["no-tune", "ledger-lite"],
+  "armDefinitions": {
+    "no-tune": "droidtune trial --task tasks/t004-git-surgery --model <route> --tune no-tune, with no --tune-file. The worktree contains only what tasks/t004-git-surgery/environment/seed.sh creates.",
+    "ledger-lite": "The same command plus --tune-file tunes/ledger-lite. lib/tune.js writes tunes/ledger-lite/AGENTS.md into the seeded worktree as an untracked, .git/info/exclude-listed file, so seedSha and the graded history are byte-identical to the no-tune arm."
+  },
+  "tuneFile": "tunes/ledger-lite/AGENTS.md",
+  "tuneSha256": "17ee2f2201af4aaf67227e7e5bbf366a94c11272720f4a823aae5580a4641b4b",
+  "pinnedModel": "Paired within route across four OpenCode Zen free BYOK routes; no cross-route pooling of arms",
+  "routes": [
+    "hy3-free",
+    "nemotron-3.5-lightning-free",
+    "laguna-s-2.1-free",
+    "nemotron-3-ultra-free"
+  ],
+  "n": 10,
+  "design": {
+    "nPerArmPerRoute": 10,
+    "nPerArm": 40,
+    "totalTrials": 80,
+    "autoLevel": "high",
+    "timeoutMs": 300000,
+    "ordering": "Arms alternate within each route (no-tune, ledger-lite, no-tune, …) so provider-side drift over the sweep cannot load onto one arm."
+  },
+  "primaryMetric": "no-submission-rate",
+  "primaryMetricDefinition": "count(outcome == 'NO_SUBMISSION') / count(trials that reached the model), pooled across the four routes. The denominator excludes PROVIDER_ERROR, DROID_ERROR, and VERIFIER_ERROR — trials that never produced a model attempt — and includes TIMEOUT and every VERIFIED_* outcome. TIMEOUT is never counted as a NO_SUBMISSION.",
+  "secondaryMetrics": [
+    "verified-pass-rate",
+    "no-submission-rate-per-route",
+    "output-tokens-per-trial",
+    "cycle-time-ms",
+    "audit-claim-without-coverage-per-trial",
+    "audit-no-test-finish-per-trial"
+  ],
+  "decisionRule": "Recommend ledger-lite for this task only if ALL of: (1) the pooled NO_SUBMISSION rate in the ledger-lite arm is at least 25 absolute percentage points below the no-tune arm; (2) a two-sided Fisher exact test on the pooled 2x2 (arm x submitted/not) gives p < 0.05; (3) the pooled VERIFIED_PASS rate in the ledger-lite arm is not lower than in the no-tune arm. If any condition fails, report the observed rates and state that the tune is not supported — never re-cut the metric, the routes, or n after seeing results. Per-route rates and all exclusions are published either way.",
+  "exclusionRule": "A trial classified PROVIDER_ERROR, DROID_ERROR, or VERIFIER_ERROR never reached the model and is replaced by one re-run at the same arm and route, capped at 5 replacements per route across both arms. Every attempt — replaced ones included — is published in the evidence packs, and the replacement count is reported per route. Exceeding the cap on a route drops that route from the pooled analysis entirely rather than analysing it partially.",
+  "registeredAt": "2026-08-20T00:00:00.000Z",
+  "limitations": "Free BYOK routes only, at $0; nothing here transfers to native Droid or to paid routes without a separate claim. Single task, so this measures a commit-discipline effect on t004-git-surgery, not a general capability gain — ledger-lite carries four other mechanisms whose contributions this design cannot separate. Free-route availability is unstable (a 2026-08-19 probe found only 4 of 10 advertised routes usable), so the sweep must complete inside one session or record the gap. Not run: no trial for this claim has been executed, and no number from it may be cited until the full 80-trial design completes."
+}
