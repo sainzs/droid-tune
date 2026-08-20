@@ -43,15 +43,26 @@ node bin/droidtune.js baseline --confirm-spend  # LIVE: spends Factory credits
 ```
 
 Exit codes: 0 clean/VERIFIED_PASS · 1 faults or non-pass outcome · 2 usage.
-Fault/hint IDs are stable (`DT001`–`DT009`, `DT101`–`DT104`, `DT-P00x`);
+Fault/hint IDs are stable (`DT001`–`DT010`, `DT101`–`DT104`, `DT-P00x`);
 `--demo` runs bundled fixtures with no Droid install. `--probe` spends BYOK
 credits (opt-in). `trial` runs one task end-to-end through `droid exec`
-(autonomy high by default, `droidtune-trial` tagged session) and writes a
+(requires an explicit `--model` — there is no default, so no run can silently
+spend a paid plan; autonomy high unless `--auto` says otherwise;
+`droidtune-trial` tagged session) and writes a
 development evidence pack under `runs/<tune>/<task>/attempt-N/` (gitignored;
 claim-eligible published packs begin with M5 baselines). First live integration
 trial 2026-08-18: t001 VERIFIED_PASS via `deepseek-v4-flash-free` (Zen free)
-in 15.4s at $0; n=1 toy-task result, not a benchmark claim. BYOK keys live in
-`~/.factory/env.sh` (mode 600, `${ENV_VAR}` refs in `~/.factory/settings.json`).
+in 15.4s at $0; n=1 toy-task result, not a benchmark claim. BYOK credentials
+are referenced as `${ENV_VAR}` in `~/.factory/settings.json` `customModels[]`
+and must be set in the environment at run time; how they get there is the
+operator's choice (this repo's author uses a mode-600 `~/.factory/env.sh`, but
+that is a personal convention, not a Droid one). `diagnose` names any missing
+variable (`DT010`); values are never read, printed, or written to a pack.
+
+`runs/` is gitignored, so published numbers are reproduced from `demo-pack/` —
+23 sanitized real evidence packs. `node scripts/check-demo-table.js` asserts
+the committed snapshot and the README block both still match what
+`scripts/results-table.js` regenerates; CI fails on drift.
 
 ## Invariants
 
