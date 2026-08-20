@@ -36,8 +36,11 @@ node bin/droidtune.js diagnose [--json] [--demo] [--probe [model]]
                                [--sessions-dir D] [--config F]
                                [--droid-path P] [--limit N]
 node bin/droidtune.js trial --task <dir> [--model m] [--tune name]
+                            [--tune-file tunes/ledger-lite]
                             [--auto high|medium|low] [--timeout-ms N]
                             [--runs-dir D] [--attempt N] [common flags]
+node bin/droidtune.js audit <pack-dir|runs-dir> [--json] [--window N]
+                            [--stall-threshold N]
 npm run check        # node --test + CLI smoke (CI parity)
 node bin/droidtune.js baseline --confirm-spend  # LIVE: spends Factory credits
 ```
@@ -58,6 +61,25 @@ and must be set in the environment at run time; how they get there is the
 operator's choice (this repo's author uses a mode-600 `~/.factory/env.sh`, but
 that is a personal convention, not a Droid one). `diagnose` names any missing
 variable (`DT010`); values are never read, printed, or written to a pack.
+
+`audit` is offline-only (no droid, no credentials, no network): it counts
+claim-without-coverage, stall, re-derivation, and no-test-finish over a pack's
+`transcript.jsonl`. Detectors are biased to false negatives — check
+recognition is generous, claim recognition narrow — because a count is
+evidence about a model. `demo-pack/` was sanitized without transcripts, so
+`audit demo-pack` reports `0/24 auditable`, never 24 clean rows.
+`scripts/results-table.js --audit` appends the same counts; the flag is off by
+default because that script's plain output is byte-compared in CI.
+
+Tunes live in `tunes/<name>/AGENTS.md` and are applied with
+`--tune-file <dir>` (`lib/tune.js`): the file is copied into the seeded
+worktree untracked AND listed in `.git/info/exclude`, so the seeded history is
+byte-identical to the no-tune arm and `git add -A` cannot sweep it into the
+graded patch. Refuses to overwrite a task's own `AGENTS.md`
+(`t005-agents-md-compliance` grades against exactly that file). The pack's
+provenance records the tune name/path/bytes/sha256; untuned packs record
+`tune: null`. First tune: `tunes/ledger-lite` (~390 tokens), preregistered as
+`claims/dt-v1-ledger-lite-nosub.json` — **not run**.
 
 `runs/` is gitignored, so published numbers are reproduced from `demo-pack/` —
 23 sanitized real evidence packs. `node scripts/check-demo-table.js` asserts

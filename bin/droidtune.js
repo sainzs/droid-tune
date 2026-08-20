@@ -10,6 +10,7 @@ import { runTrial } from '../lib/runner.js'
 import { makeRunOne, runTriforce } from '../lib/triforce.js'
 import { runBaseline } from '../lib/baseline.js'
 import { resolveDroid } from '../lib/droid-path.js'
+import { resolveTuneFile } from '../lib/tune.js'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -38,6 +39,8 @@ trial flags:
                          routes: hy3-free, nemotron-3.5-lightning-free,
                          laguna-s-2.1-free, nemotron-3-ultra-free)
   --tune <name>          Tune name for the pack path (default ad-hoc)
+  --tune-file <path>     Tune dir (or AGENTS.md) copied into the worktree before
+                         droid exec; e.g. tunes/ledger-lite
   --attempt <n>          Attempt number (default 1)
   --auto <level>         Autonomy: low|medium|high (default high)
   --timeout-ms <n>       Per-trial timeout (default 300000)
@@ -52,6 +55,7 @@ run flags:
   --offline              Offline grading (no droid); apply the task oracle solution
   --noop                 Grade an empty diff (no solution applied)
   --cheat <name>         Run tasks/<id>/cheats/<name>.sh instead of the real tests
+  --tune-file <path>     Apply a tune to the worktree (same as trial; offline-safe)
 
 audit flags:
   <dir>                  Evidence pack (…/attempt-N) or a runs/demo-pack root (required)
@@ -89,6 +93,7 @@ const VALUE_FLAGS = new Map([
   ['--task', 'task'],
   ['--model', 'model'],
   ['--tune', 'tune'],
+  ['--tune-file', 'tuneFile'],
   ['--auto', 'auto'],
   ['--timeout-ms', 'timeoutMs'],
   ['--runs-dir', 'runsDir'],
@@ -155,6 +160,29 @@ function resolveDroidOrDie (opts) {
     )
   }
   return droid.path
+}
+
+// Same reasoning as resolveTaskDir: a relative --tune-file resolves against
+// the invoking shell's cwd, which for a plugin install is almost never the
+// bundle where tunes/ lives. Fall back to REPO_ROOT (= DROID_PLUGIN_ROOT) so
+// `--tune-file tunes/ledger-lite` and `--tune-file ledger-lite` both work
+// regardless of where the caller stood.
+function resolveTuneSpec (spec) {
+  if (spec === undefined || spec === null) return null
+  let resolved = path.resolve(spec)
+  if (!path.isAbsolute(spec) && !existsSync(spec)) {
+    for (const candidate of [path.join(REPO_ROOT, spec), path.join(REPO_ROOT, 'tunes', spec)]) {
+      if (existsSync(candidate)) { resolved = candidate; break }
+    }
+  }
+  // Fail here, before a trial spawns anything, with the same message the
+  // runner would have produced deep inside a live run.
+  try {
+    resolveTuneFile(resolved)
+  } catch (err) {
+    usageError(`${err.message} (looked in the current directory and ${path.join(REPO_ROOT, 'tunes')})`)
+  }
+  return resolved
 }
 
 function defaultTrialPaths (opts) {
@@ -236,7 +264,8 @@ async function cmdTrial (opts) {
     tuneName,
     attempt,
     autoLevel: opts.auto ?? 'high',
-    timeoutMs: opts.timeoutMs
+    timeoutMs: opts.timeoutMs,
+    tuneFile: resolveTuneSpec(opts.tuneFile)
   })
   const reportCmd = `node ${path.join(REPO_ROOT, 'scripts', 'results-table.js')} --runs-dir ${resolvedRunsDir}`
   // `trial` is always a development/ad-hoc run — it never freezes bundle
@@ -311,7 +340,8 @@ async function cmdRun (opts) {
     attempt: opts.attempt ?? Date.now(),
     offline: true,
     cheat: opts.cheat ?? null,
-    noop: !!opts.noop
+    noop: !!opts.noop,
+    tuneFile: resolveTuneSpec(opts.tuneFile)
   })
   process.stdout.write(`verdict=${result.outcome}\n`)
   process.stdout.write(`task=${path.basename(taskDir)}\n`)

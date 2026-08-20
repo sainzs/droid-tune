@@ -428,3 +428,40 @@ test('audit over the committed demo-pack reports it as unauditable, never as cle
   assert.match(r.stdout, /TOTAL \(0\/24 auditable\)/)
   assert.match(r.stdout, /24 pack\(s\) carry no transcript\.jsonl/)
 })
+
+// --- tunes ---------------------------------------------------------------
+
+test('--tune-file with a name resolves against the repo tunes/ dir, not the caller cwd', () => {
+  const runsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-cli-tune-'))
+  try {
+    const r = run(
+      ['run', 't001-greet-script', '--offline', '--tune', 'ledger-lite',
+        '--tune-file', 'ledger-lite', '--runs-dir', runsDir],
+      { cwd: os.tmpdir() }
+    )
+    assert.equal(r.code, 0, `${r.stdout}${r.stderr}`)
+    assert.match(r.stdout, /verdict=VERIFIED_PASS/)
+  } finally {
+    rmSync(runsDir, { recursive: true, force: true })
+  }
+})
+
+test('an unknown --tune-file is a usage error, not a stack trace mid-run', () => {
+  const r = run(['run', 't001-greet-script', '--offline', '--tune-file', 'no-such-tune'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /tune not found/)
+  assert.match(r.stderr, /looked in the current directory and/)
+})
+
+test('trial rejects --tune-file before it ever needs a model or a droid binary', () => {
+  const r = run(['trial', '--task', 't001-greet-script', '--model', 'x', '--tune-file', 'no-such-tune'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /tune not found/)
+})
+
+test('--help documents --tune-file for both trial and run', () => {
+  const r = run(['--help'])
+  assert.equal(r.code, 0)
+  assert.match(r.stdout, /--tune-file <path> {5}Tune dir \(or AGENTS\.md\) copied into the worktree/)
+  assert.match(r.stdout, /--tune-file <path> {5}Apply a tune to the worktree/)
+})

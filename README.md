@@ -174,8 +174,8 @@ trial outcome, or violations found · `2` usage error.
 Diagnose flags: `--probe [model]` · `--demo` · `--limit <n>` · `--json`.
 
 Trial flags: `--task <dir>` · `--model <id-or-substring>` · `--tune <name>` ·
-`--attempt <n>` · `--auto <low|medium|high>` · `--timeout-ms <n>` ·
-`--runs-dir <path>` · `--json`.
+`--tune-file <path>` · `--attempt <n>` · `--auto <low|medium|high>` ·
+`--timeout-ms <n>` · `--runs-dir <path>` · `--json`.
 
 Common overrides: `--sessions-dir <path>` · `--config <file>` ·
 `--droid-path <path>`.
@@ -224,6 +224,33 @@ DeepSeek V4 tables, exact zero for the frozen Zen-free table, or observed
 Factory Standard Credits for native Droid. Unknown routes and stale tables fail
 closed. Development packs remain ineligible when any required artifact is
 absent. No transcript, verifier provenance, or pricing snapshot means no claim.
+
+## Tunes
+
+A tune is a directory with an `AGENTS.md` in it. `--tune-file` copies that file
+into the task worktree before `droid exec` starts, and Droid reads it natively
+— no wrapper, no prompt injection, no harness hook:
+
+```sh
+node bin/droidtune.js trial --task tasks/t004-git-surgery \
+  --model hy3-free --tune ledger-lite --tune-file tunes/ledger-lite
+```
+
+The file lands untracked and listed in `.git/info/exclude`, so the seeded
+history is byte-identical to the no-tune arm and `git add -A` cannot sweep the
+tune into the graded patch. Applying a tune onto a task that ships its own
+`AGENTS.md` is refused rather than silently resolved. Each pack records the
+tune's name, path, size, and SHA-256 in its provenance.
+
+[`tunes/ledger-lite/`](tunes/ledger-lite/) is the first one: ~390 tokens of
+workspace discipline — gate, five-line ledger, write-once hub, checkpoints that
+must name `by: <command> including <edges>`, and an explicit *always commit
+completed work to git* contract aimed at the `NO_SUBMISSION` failure above.
+Distilled from the [J-Space Cognition Suite
+V3.6](https://github.com/Tiger3807861189/J-Space-Cognition-Suite-V3.6)
+(Apache-2.0). Whether it moves the rate is preregistered, not claimed:
+[`claims/dt-v1-ledger-lite-nosub.json`](claims/dt-v1-ledger-lite-nosub.json)
+has not been run.
 
 ## Process audit
 
