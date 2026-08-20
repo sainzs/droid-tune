@@ -41,6 +41,9 @@ node bin/droidtune.js trial --task <dir> [--model m] [--tune name]
                             [--runs-dir D] [--attempt N] [common flags]
 node bin/droidtune.js audit <pack-dir|runs-dir> [--json] [--window N]
                             [--stall-threshold N]
+node bin/droidtune.js badge <runs-dir|weather> [--label L] [--out F]
+node bin/droidtune.js watch [--file T] [--sessions-dir D] [--once] [--json]
+node scripts/route-weather.js --probe | --render [--check]
 npm run check        # node --test + CLI smoke (CI parity)
 node bin/droidtune.js baseline --confirm-spend  # LIVE: spends Factory credits
 ```
@@ -80,6 +83,26 @@ graded patch. Refuses to overwrite a task's own `AGENTS.md`
 provenance records the tune name/path/bytes/sha256; untuned packs record
 `tune: null`. First tune: `tunes/ledger-lite` (~390 tokens), preregistered as
 `claims/dt-v1-ledger-lite-nosub.json` — **not run**.
+
+`weather/` is a daily free-route observation series, written by the
+`route-weather` scheduled workflow (06:17 UTC, `OPENCODE_ZEN_KEY` secret,
+`[skip ci]` data-only commits). Failure is recorded as data; only a missing
+credential aborts without writing, because that is a fact about the runner and
+not about the routes. `weather/README.md` and `weather/badge.json` are pure
+functions of `weather/route-status.jsonl` — the "as of" date is the newest date
+in the series, never the clock — and `test/route-weather.test.js` re-derives
+them and fails on drift, which is what covers the `[skip ci]` commits. The key
+is never interpolated into a shell command, `lib/weather.js` scrubs anything
+credential-shaped out of every detail before it can be written, and the
+workflow greps `weather/` and refuses to commit if a credential shape appears.
+First observation 2026-08-20: 4 of 8 answered; `glm-5-free` and
+`kimi-k2.5-free` return **401 "not supported"**, which is why classification
+runs on the message and tests unsupported before auth.
+
+`badge` emits shields endpoint JSON from committed evidence only (runs dir
+pass-rate, or the weather series); `watch` streams `lib/audit.js` findings from
+a growing transcript, reporting each once and withholding `no-test-finish`
+until the watch ends.
 
 `runs/` is gitignored, so published numbers are reproduced from `demo-pack/` —
 23 sanitized real evidence packs. `node scripts/check-demo-table.js` asserts

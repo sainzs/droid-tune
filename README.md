@@ -176,6 +176,7 @@ trial outcome, or violations found · `2` usage error.
 | `triforce` | Runs oracle, no-op, and cheat controls for every full-layout task without calling Droid |
 | `audit <dir>` | Counts process-discipline violations in a pack's recorded transcript — offline, no model call |
 | `badge <target>` | Emits a shields.io endpoint badge from a runs dir or from the free-route weather series |
+| `watch` | Streams the same audit findings from a transcript while droid is still writing it |
 
 Diagnose flags: `--probe [model]` · `--demo` · `--limit <n>` · `--json`.
 
@@ -342,6 +343,31 @@ fact to a transcript instead of to a live agent. Attribution is in the
 > `0/24 auditable` rather than 24 clean rows. To see the auditor produce
 > findings from a fresh clone, point it at the committed fixture packs:
 > `node bin/droidtune.js audit test/fixtures/audit/packs`.
+
+### Watching a session live
+
+`audit` answers "what did that session do" afterwards. `droidtune watch` runs
+the same detectors against a transcript while droid is still appending to it,
+which is the only moment the answer can still change anything — a stall is
+worth seeing on its third identical command, not in a post-mortem.
+
+```sh
+node bin/droidtune.js watch                     # newest session under ~/.factory/sessions
+node bin/droidtune.js watch --file <transcript.jsonl>
+node bin/droidtune.js watch --file <t.jsonl> --once --json
+```
+
+Findings go to stdout (one JSON object per line under `--json`); the session
+summary goes to stderr. Each finding is reported exactly once, and
+`no-test-finish` is withheld while the session is live — mid-run, "has not run
+a check yet" is the normal state of every session that has not got there yet.
+It is released when the watch ends, including on Ctrl-C.
+
+Auto-discovery picks the most recently modified transcript under the sessions
+directory, including a session droid has not finished writing (those have no
+`.settings.json` yet, which `diagnose` correctly reports as a fault `DT005` and
+`watch` correctly ignores). It is best-effort: if you are running several
+sessions at once, name the one you mean with `--file`.
 
 ## BYOK recipe (`${ENV_VAR}` keys, never plaintext)
 

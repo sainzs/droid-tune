@@ -13,6 +13,7 @@ import { runBaseline } from '../lib/baseline.js'
 import { resolveDroid } from '../lib/droid-path.js'
 import { resolveTuneFile } from '../lib/tune.js'
 import { readObservations, summarize } from '../lib/weather.js'
+import { newestTranscript, renderFinding, renderWatchSummary, watchFile } from '../lib/watch.js'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -26,6 +27,7 @@ Usage:
   droidtune triforce             Run the offline tri-force self-test (49 legs)
   droidtune audit <dir> [flags]  Count process violations in a pack (or a whole runs dir) — offline
   droidtune badge <target>       Emit a shields.io endpoint badge from a runs dir or from weather/
+  droidtune watch [flags]        Stream audit findings from a transcript as it is written — offline
 
 diagnose flags:
   --json                 Machine-readable output
@@ -71,6 +73,12 @@ badge flags:
   --label <text>         Badge label (default: "verified pass" / "free routes")
   --out <file>           Write the JSON to a file instead of stdout
 
+watch flags:
+  --file <path>          Transcript to watch (default: newest under the sessions dir)
+  --interval-ms <n>      Poll interval (default 700)
+  --once                 Single pass over the current contents, then exit
+  --json                 Emit one JSON object per finding
+
 common flags:
   --sessions-dir <path>  Override ~/.factory/sessions
   --config <file>        Override ~/.factory/settings.json
@@ -111,9 +119,11 @@ const VALUE_FLAGS = new Map([
   ['--window', 'window'],
   ['--label', 'label'],
   ['--out', 'out'],
+  ['--file', 'file'],
+  ['--interval-ms', 'intervalMs'],
   ['--stall-threshold', 'stallThreshold']
 ])
-const INT_FLAG_KEYS = new Set(['limit', 'timeoutMs', 'attempt', 'window', 'stallThreshold'])
+const INT_FLAG_KEYS = new Set(['limit', 'timeoutMs', 'attempt', 'window', 'stallThreshold', 'intervalMs'])
 
 function parseArgs (argv) {
   if (argv.length === 0) usage(2)
@@ -128,6 +138,8 @@ function parseArgs (argv) {
     else if (a === '--probe') {
       const nx = rest[i + 1]
       if (nx !== undefined && !nx.startsWith('-')) { opts.probe = nx; i++ } else opts.probe = ''
+    } else if (a === '--once') {
+      opts.once = true
     } else if (a === '--offline') {
       opts.offline = true
     } else if (a === '--noop') {
@@ -427,6 +439,57 @@ async function cmdBadge (opts) {
   process.exitCode = 0
 }
 
+// `watch` runs lib/audit.js's detectors against a transcript while droid is
+// still writing it. Offline in the same sense `audit` is: it reads a file that
+// another process happens to be appending to, and calls nothing.
+async function cmdWatch (opts) {
+  let target = opts.file ? path.resolve(opts.file) : null
+  if (target === null) {
+    const sessionsDir = opts.sessionsDir ?? path.join(os.homedir(), '.factory', 'sessions')
+    const newest = await newestTranscript(sessionsDir)
+    if (!newest) {
+      usageError(
+        `no transcript found under ${sessionsDir}. Start a droid session first, or watch a ` +
+        `specific file with --file <transcript.jsonl>.`
+      )
+    }
+    target = newest.path
+    process.stderr.write(`watching newest session ${newest.id} (${target})\n`)
+  }
+  if (!existsSync(target)) usageError(`not found: ${opts.file ?? target}`)
+
+  const emit = (v) => process.stdout.write(
+    (opts.json ? JSON.stringify(v) : renderFinding(v)) + '\n'
+  )
+  const auditOpts = { coverageWindow: opts.window, stallThreshold: opts.stallThreshold }
+
+  const controller = watchFile(target, {
+    ...auditOpts,
+    intervalMs: opts.intervalMs ?? 700,
+    onFindings: (fresh) => { for (const v of fresh) emit(v) }
+  })
+
+  const finish = () => {
+    const { fresh, result } = controller.stop()
+    for (const v of fresh) emit(v)
+    if (!opts.json) process.stderr.write('\n' + renderWatchSummary(result, { filePath: target }) + '\n')
+    // Same contract as diagnose/audit: 1 when something was found.
+    process.exitCode = (result?.total ?? 0) > 0 ? 1 : 0
+  }
+
+  if (opts.once) { finish(); return }
+
+  // Ctrl-C is the normal way to end a watch, and it must still print the
+  // terminal findings that were withheld during streaming — otherwise
+  // no-test-finish, the one this tool most wants to tell you about, is the one
+  // finding you never see.
+  await new Promise((resolve) => {
+    const onSignal = () => { process.off('SIGINT', onSignal); resolve() }
+    process.on('SIGINT', onSignal)
+  })
+  finish()
+}
+
 async function cmdTriforce () {
   // makeRunOne shells back into this CLI from the repo root. Gate every task
   // that has the full Harbor layout (instruction + seed + oracle + tests).
@@ -458,6 +521,7 @@ async function main () {
   if (cmd === 'run') return cmdRun(opts)
   if (cmd === 'audit') return cmdAudit(opts)
   if (cmd === 'badge') return cmdBadge(opts)
+  if (cmd === 'watch') return cmdWatch(opts)
   if (cmd === 'triforce') return cmdTriforce()
   if (cmd !== 'diagnose') usageError(`unknown command: ${cmd}`)
   if (opts.probe !== null && opts.demo) usageError('--probe cannot be combined with --demo')

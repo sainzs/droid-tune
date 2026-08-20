@@ -2,8 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import os from 'node:os'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { runTriforce } from '../lib/triforce.js'
 
@@ -529,4 +529,76 @@ test('badge --out writes the file and reports what it wrote', () => {
 test('badge --label overrides the default label', () => {
   const r = run(['badge', 'demo-pack', '--label', 'demo pack'], { cwd: root })
   assert.equal(JSON.parse(r.stdout).label, 'demo pack')
+})
+
+// --- watch ---------------------------------------------------------------
+
+// `run` above only surfaces stderr when the child fails, because execFileSync
+// throws to deliver it. watch prints findings to stdout and its summary to
+// stderr (so `--json` output stays pure JSONL), so its success cases need both
+// streams.
+function runCapture (args) {
+  const r = spawnSync('node', [bin, ...args], { encoding: 'utf8' })
+  return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' }
+}
+
+test('watch --once over a planted transcript reports the finding and exits 1', () => {
+  const r = runCapture(['watch', '--file', path.join(root, 'test/fixtures/audit/claim-without-coverage.jsonl'), '--once'])
+  assert.equal(r.code, 1)
+  assert.match(r.stdout, /\[claim-without-coverage\]/)
+  assert.match(r.stderr, /11 tool events/)
+})
+
+test('watch --once over a clean transcript exits 0 and says so', () => {
+  const r = runCapture(['watch', '--file', path.join(root, 'test/fixtures/audit/clean.jsonl'), '--once'])
+  assert.equal(r.code, 0)
+  assert.match(r.stderr, /no violations/)
+})
+
+// --once treats the current contents as the whole session, so the terminal
+// finding is released rather than withheld forever.
+test('watch --once releases the terminal no-test-finish', () => {
+  const r = run(['watch', '--file', path.join(root, 'test/fixtures/audit/no-test-finish.jsonl'), '--once'])
+  assert.equal(r.code, 1)
+  assert.match(r.stdout, /\[no-test-finish\]/)
+})
+
+test('watch --json emits one JSON object per finding', () => {
+  const r = run(['watch', '--file', path.join(root, 'test/fixtures/audit/stall.jsonl'), '--once', '--json'])
+  assert.equal(r.code, 1)
+  const findings = r.stdout.trim().split('\n').map(l => JSON.parse(l))
+  assert.equal(findings.length, 1)
+  assert.equal(findings[0].category, 'stall')
+  assert.equal(findings[0].count, 3)
+})
+
+test('watch on a missing --file is a usage error', () => {
+  const r = run(['watch', '--file', path.join(root, 'nope.jsonl'), '--once'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /not found/)
+})
+
+test('watch with no session to find explains how to point it at one', () => {
+  const r = run(['watch', '--sessions-dir', path.join(root, 'no-such-sessions'), '--once'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /no transcript found/)
+  assert.match(r.stderr, /--file <transcript\.jsonl>/)
+})
+
+test('watch discovers the newest transcript under a sessions dir', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-watch-cli-'))
+  try {
+    const proj = path.join(dir, '-tmp-project')
+    mkdirSync(proj, { recursive: true })
+    writeFileSync(
+      path.join(proj, 'live.jsonl'),
+      readFileSync(path.join(root, 'test/fixtures/audit/stall.jsonl'), 'utf8')
+    )
+    const r = runCapture(['watch', '--sessions-dir', dir, '--once'])
+    assert.equal(r.code, 1)
+    assert.match(r.stderr, /watching newest session live/)
+    assert.match(r.stdout, /\[stall\]/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
