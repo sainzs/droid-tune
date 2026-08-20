@@ -1,0 +1,1 @@
+{"outcome":"TIMEOUT","startedAt":"2026-08-19T21:04:12.517Z","budget":{"maxTrials":null,"maxOutputTokensPerTrial":null,"cumulativeOutputTokens":null,"cumulativeOutputTokensUsed":0},"modelObserved":"custom:hy3-free-OpenCode-Zen-free-8","routeClass":"byok","budgetAbort":false,"endedAt":"2026-08-19T21:09:13.201Z","durationMs":300684}

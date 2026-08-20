@@ -1,0 +1,1 @@
+{"outcome":"TIMEOUT","startedAt":"2026-08-19T20:56:17.237Z","budget":{"maxTrials":null,"maxOutputTokensPerTrial":null,"cumulativeOutputTokens":null,"cumulativeOutputTokensUsed":0},"modelObserved":"custom:nemotron-3-5-lightning-free-OpenCode-Zen-free-10","routeClass":"byok","budgetAbort":false,"endedAt":"2026-08-19T21:01:18.181Z","durationMs":300943}

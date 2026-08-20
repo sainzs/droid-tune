@@ -1,0 +1,22 @@
+diff --git a/JUNK.txt b/JUNK.txt
+deleted file mode 100644
+index 28fc71c..0000000
+--- a/JUNK.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-scratch junk
+diff --git a/calc.sh b/calc.sh
+index 961dbd8..9b7bfe2 100755
+--- a/calc.sh
++++ b/calc.sh
+@@ -1,8 +1,8 @@
+ #!/bin/sh
+ op="$1"; a="$2"; b="$3"
+ case "$op" in
+-  add) echo $((a - b));;        # BROKEN: add subtracts
+-  multiply) echo $((a + b));;   # still broken
++  add) echo $((a + b));;
++  multiply) echo $((a * b));;
+   divide) echo $((a / b));;
+   *) echo "unknown op" >&2; exit 1;;
+ esac

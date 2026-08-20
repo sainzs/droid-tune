@@ -1,0 +1,1 @@
+{"results":{"tool":{"name":"t003-test.sh"},"summary":{"tests":14,"passed":14,"failed":0,"skipped":0,"pending":0,"other":0,"start":0,"stop":0},"tests":[{"name":"canonicalizePath behavioral spec","status":"passed","duration":0}]}}

@@ -1,0 +1,39 @@
+diff --git a/canonicalize.mjs b/canonicalize.mjs
+new file mode 100644
+index 0000000..5d67480
+--- /dev/null
++++ b/canonicalize.mjs
+@@ -0,0 +1,33 @@
++// canonicalizePath(name)
++//
++// Returns a canonical key for a single path component (a file or directory
++// name, not a multi-segment path) such that names that are "the same" for a
++// human reader map to the same key, while genuinely different names map to
++// different keys.
++//
++// The equivalence implemented is exactly "equal after Unicode compatibility
++// decomposition (NFKC) plus case folding", which subsumes the three required
++// twin categories:
++//
++//   1. Normalization twins  - NFC and NFD of the same string are canonically
++//      equivalent, so NFKC (which includes canonical normalization) collapses
++//      them. e.g. "café" (U+00E9) and "cafe" (e + U+0301) -> same key.
++//   2. Case twins           - toLowerCase() collapses letter case.
++//      e.g. "README.md" and "readme.md" -> same key.
++//   3. Compatibility twins  - NFKC compatibility decomposition collapses
++//      ligatures, full-width forms, the Kelvin sign, etc.
++//      e.g. "file.txt" (U+FB01), "FILE.txt" (full-width), "k" (U+212A) -> same.
++//
++// The transform is total and deterministic: it never throws. `String(name)`
++// coerces any input, and `normalize` / `toLowerCase` are stable for every
++// string (empty, control characters, and invisibles all yield a fixed key).
++//
++// The canonical key is the normalized-and-lowercased string itself: two names
++// are equivalent iff their keys are identical, so the mapping is a faithful
++// equivalence key with no spurious collisions beyond the intended twins.
++
++export function canonicalizePath(name) {
++  return String(name)
++    .normalize('NFKC')
++    .toLowerCase();
++}

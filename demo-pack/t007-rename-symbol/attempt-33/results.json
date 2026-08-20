@@ -1,0 +1,1 @@
+{"outcome":"PROVIDER_ERROR","startedAt":"2026-08-19T21:29:44.605Z","budget":{"maxTrials":null,"maxOutputTokensPerTrial":null,"cumulativeOutputTokens":null,"cumulativeOutputTokensUsed":0},"modelObserved":"custom:hy3-free-OpenCode-Zen-free-8","routeClass":"byok","budgetAbort":false,"endedAt":"2026-08-19T21:30:09.688Z","durationMs":25083}

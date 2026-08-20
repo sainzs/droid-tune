@@ -1,0 +1,10 @@
+diff --git a/canonicalize.mjs b/canonicalize.mjs
+new file mode 100644
+index 0000000..b25506f
+--- /dev/null
++++ b/canonicalize.mjs
+@@ -0,0 +1,4 @@
++export function canonicalizePath(name) {
++  if (typeof name !== 'string') name = String(name);
++  return name.normalize('NFKC').toLowerCase();
++}

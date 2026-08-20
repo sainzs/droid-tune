@@ -1,0 +1,1 @@
+{"outcome":"TIMEOUT","startedAt":"2026-08-19T21:09:13.270Z","budget":{"maxTrials":null,"maxOutputTokensPerTrial":null,"cumulativeOutputTokens":null,"cumulativeOutputTokensUsed":0},"modelObserved":"custom:laguna-s-2-1-free-OpenCode-Zen-free-11","routeClass":"byok","budgetAbort":false,"endedAt":"2026-08-19T21:14:14.097Z","durationMs":300826}

@@ -1,0 +1,43 @@
+diff --git a/canonicalize.mjs b/canonicalize.mjs
+new file mode 100644
+index 0000000..13124aa
+--- /dev/null
++++ b/canonicalize.mjs
+@@ -0,0 +1,37 @@
++// canonicalizePath(name) -> canonical key string for a single path component.
++//
++// Two names map to the same key iff they are "the same" for a human reader,
++// collapsing the following twins (in priority order):
++//   1. Normalization twins  : NFC vs NFD (e.g. café U+00E9 vs café e+U+0301)
++//   2. Case twins           : differing only by letter case (README vs readme)
++//   3. Compatibility twins  : equal after NFKC + case folding (ﬁ, ＦＩＬＥ, K U+212A)
++//
++// The function is total and deterministic: it never throws and yields a stable
++// string key for any input (including empty, control, and invisible chars).
++// Leading/trailing Unicode whitespace is trimmed for consistency; remaining
++// invisible characters are preserved so the rule stays stable.
++
++export function canonicalizePath(name) {
++  // Total: coerce non-strings to a string; guard against values (e.g. Symbols)
++  // that cannot be stringified directly.
++  if (typeof name !== 'string') {
++    if (name === null || name === undefined) {
++      name = '';
++    } else {
++      try {
++        name = String(name);
++      } catch {
++        name = '';
++      }
++    }
++  }
++
++  // Leading/trailing Unicode whitespace (incl. NBSP, ZWNBSP) does not affect
++  // human identity for a filename, so strip it consistently.
++  const trimmed = name.trim();
++
++  // NFKC compatibility decomposition collapses both canonical (normalization)
++  // and compatibility twins; subsequent case folding (toLowerCase) collapses
++  // case twins. Order matters: decompose first, then fold.
++  return trimmed.normalize('NFKC').toLowerCase();
++}

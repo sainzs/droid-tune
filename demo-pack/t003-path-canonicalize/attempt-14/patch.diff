@@ -1,0 +1,30 @@
+diff --git a/canonicalize.mjs b/canonicalize.mjs
+new file mode 100644
+index 0000000..4d62665
+--- /dev/null
++++ b/canonicalize.mjs
+@@ -0,0 +1,24 @@
++/**
++ * Canonicalizes a single path component (file or directory name) into a stable key.
++ *
++ * Collapses the following twin types (in priority order):
++ * 1. Normalization twins — NFC/NFD forms map to the same key.
++ * 2. Case twins — differing only by letter case map to the same key.
++ * 3. Compatibility twins — equal after NFKC compatibility decomposition + case folding
++ *    (ligatures, full-width forms, Kelvin sign, etc.) map to the same key.
++ *
++ * The function is total and deterministic: it never throws, and any string input
++ * (including empty, control characters, and invisibles) yields a stable string key.
++ *
++ * @param {string} name - A single path component (not a multi-segment path)
++ * @returns {string} A canonical key string
++ */
++export function canonicalizePath(name) {
++  // Step 1: Apply NFKC normalization — handles normalization twins (NFC/NFD)
++  // and compatibility twins (ligatures, full-width, Kelvin sign, etc.)
++  const normalized = name.normalize('NFKC');
++
++  // Step 2: Apply Unicode case folding — handles case twins
++  // toLowerCase() performs Unicode case folding in modern JS engines
++  return normalized.toLowerCase();
++}
