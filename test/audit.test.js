@@ -266,3 +266,14 @@ test('lib/audit.js carries the J-Space Apache-2.0 attribution for the ship-check
   assert.match(src, /Apache License 2\.0/)
   assert.match(src, /github\.com\/Tiger3807861189\/J-Space-Cognition-Suite-V3\.6/)
 })
+
+test('several claim sentences in one text block count as one act of claiming', () => {
+  const jsonl = [
+    JSON.stringify({ type: 'session_start', id: 's' }),
+    JSON.stringify({ type: 'message', message: { role: 'assistant', content: [{ type: 'tool_use', name: 'Execute', input: { command: 'git log --oneline' } }] } }),
+    JSON.stringify({ type: 'message', message: { role: 'assistant', content: [{ type: 'text', text: 'Done.\nAll tests pass.\nThe task is complete.' }] } })
+  ].join('\n')
+  const r = auditTranscript(jsonl)
+  assert.equal(r.counts['claim-without-coverage'], 1)
+  assert.equal(r.violations.find(v => v.category === 'claim-without-coverage').claimCount, 3)
+})
