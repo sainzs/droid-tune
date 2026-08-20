@@ -10,6 +10,7 @@ import { renderDiagnose } from '../lib/report.js'
 import { runTrial } from '../lib/runner.js'
 import { makeRunOne, runTriforce } from '../lib/triforce.js'
 import { runBaseline } from '../lib/baseline.js'
+import { runSweep, renderSchedule, renderSweepSummary } from '../lib/sweep.js'
 import { resolveDroid } from '../lib/droid-path.js'
 import { resolveTuneFile } from '../lib/tune.js'
 import { routeSlug } from '../lib/paths.js'
@@ -24,6 +25,7 @@ Usage:
   droidtune diagnose [flags]     Check protocol, model routing, cache, and configuration health
   droidtune trial [flags]        Run one task end-to-end through droid exec; write an evidence pack
   droidtune baseline [flags]     Run the frozen native-Droid suite (live; explicit spend confirmation)
+  droidtune sweep [flags]        Run (or preview) the trial schedule of a preregistered claim
   droidtune run <task> [flags]   Grade a task offline (oracle/--noop/--cheat) — triforce self-test
   droidtune triforce             Run the offline tri-force self-test (49 legs)
   droidtune audit <dir> [flags]  Count process violations in a pack (or a whole runs dir) — offline
@@ -55,6 +57,15 @@ trial flags:
 baseline flags:
   --bundle <file>        Frozen bundle spec (default configs/native-droid.json)
   --confirm-spend        Required acknowledgement before any live baseline trial
+  --runs-dir <path>      Evidence-pack root (default ./runs)
+
+sweep flags:
+  --claim <file>         Preregistered claim JSON (required; a bare id resolves
+                         against claims/, e.g. dt-v1-ledger-lite-nosub)
+  --live                 Execute the schedule (default: dry run — prints the
+                         route/arm/attempt table with statuses; spawns nothing)
+  --limit <n>            Execute only the first n pending slots, then stop
+                         cleanly (paced batches against rate-limited routes)
   --runs-dir <path>      Evidence-pack root (default ./runs)
 
 run flags:
@@ -117,6 +128,7 @@ const VALUE_FLAGS = new Map([
   ['--attempt', 'attempt'],
   ['--cheat', 'cheat'],
   ['--bundle', 'bundlePath'],
+  ['--claim', 'claim'],
   ['--window', 'window'],
   ['--label', 'label'],
   ['--out', 'out'],
@@ -147,6 +159,8 @@ function parseArgs (argv) {
       opts.noop = true
     } else if (a === '--confirm-spend') {
       opts.confirmSpend = true
+    } else if (a === '--live') {
+      opts.live = true
     } else if (cmd === 'run' && !a.startsWith('-') && opts.task === undefined) {
       opts.task = a
     } else if ((cmd === 'audit' || cmd === 'badge') && !a.startsWith('-') && opts.target === undefined) {
@@ -344,6 +358,47 @@ async function cmdBaseline (opts) {
   process.exitCode = !result.stoppedByBudget && pass === result.results.length ? 0 : 1
 }
 
+// `sweep` executes a preregistered claim's schedule (lib/sweep.js). Without
+// --live it is a planning surface like diagnose: it prints the schedule table
+// and never touches droid — no binary resolution, no spend. --live gates the
+// real execution behind the same droid resolution trial uses.
+async function cmdSweep (opts) {
+  if (!opts.claim) usageError('sweep requires --claim <file> (e.g. claims/dt-v1-ledger-lite-nosub.json or the bare id)')
+  // A bare claim id resolves against claims/ (same fallback shape as badge's
+  // target resolution) so `--claim dt-v1-ledger-lite-nosub` works from any cwd.
+  let claimPath = opts.claim
+  if (!path.isAbsolute(claimPath) && !existsSync(claimPath)) {
+    const name = claimPath.endsWith('.json') ? claimPath : `${claimPath}.json`
+    for (const candidate of [path.join(REPO_ROOT, claimPath), path.join(REPO_ROOT, 'claims', name)]) {
+      if (existsSync(candidate)) { claimPath = candidate; break }
+    }
+  }
+  if (!existsSync(claimPath)) usageError(`claim not found: ${opts.claim}`)
+  const paths = defaultTrialPaths(opts)
+  const result = await runSweep({
+    claimPath: path.resolve(claimPath),
+    runsDir: path.resolve(opts.runsDir ?? path.join(REPO_ROOT, 'runs')),
+    configPath: paths.configPath,
+    sessionsDir: paths.sessionsDir,
+    // droid is resolved only for --live: a dry run must work on a machine with
+    // no droid installed at all.
+    droidPath: opts.live ? resolveDroidOrDie(opts) : undefined,
+    live: !!opts.live,
+    limit: opts.limit ?? null
+  })
+  if (opts.json) {
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n')
+  } else if (result.live) {
+    process.stdout.write(renderSweepSummary(result) + '\n')
+  } else {
+    process.stdout.write(renderSchedule(result) + '\n')
+  }
+  // A dropped route means the registered design could not complete, which is a
+  // fault worth surfacing even when every remaining trial succeeded. An abort
+  // is stronger still: the harness broke mid-sweep.
+  process.exitCode = (result.abortedBy || result.droppedRoutes.length > 0) ? 1 : 0
+}
+
 function resolveTaskDir (task) {
   if (path.isAbsolute(task)) return task
   if (existsSync(task)) return path.resolve(task)
@@ -524,6 +579,7 @@ async function main () {
   if (cmd === 'help' || cmd === '--help' || cmd === '-h') usage(0)
   if (cmd === 'trial') return cmdTrial(opts)
   if (cmd === 'baseline') return cmdBaseline(opts)
+  if (cmd === 'sweep') return cmdSweep(opts)
   if (cmd === 'run') return cmdRun(opts)
   if (cmd === 'audit') return cmdAudit(opts)
   if (cmd === 'badge') return cmdBadge(opts)
