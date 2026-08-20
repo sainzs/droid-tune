@@ -55,7 +55,7 @@ credits (opt-in). `trial` runs one task end-to-end through `droid exec`
 (requires an explicit `--model` — there is no default, so no run can silently
 spend a paid plan; autonomy high unless `--auto` says otherwise;
 `droidtune-trial` tagged session) and writes a
-development evidence pack under `runs/<tune>/<task>/attempt-N/` (gitignored;
+development evidence pack under `runs/<tune>/<route>/<task>/attempt-N/` (gitignored;
 claim-eligible published packs begin with M5 baselines). First live integration
 trial 2026-08-18: t001 VERIFIED_PASS via `deepseek-v4-flash-free` (Zen free)
 in 15.4s at $0; n=1 toy-task result, not a benchmark claim. BYOK credentials

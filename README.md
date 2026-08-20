@@ -215,7 +215,9 @@ Hints (advisory, evidence-linked): `DT101` coding-endpoint tool-call risk ·
   excluded from your session aggregates.
 - `trial` drives a task through `droid exec`, records the tagged Droid session,
   extracts the committed patch, grades it against tests the agent never saw,
-  and freezes the artifacts under `runs/<tune>/<task>/attempt-N/`.
+  and freezes the artifacts under `runs/<tune>/<route>/<task>/attempt-N/` —
+  the route segment is what lets one tune and task sweep several routes
+  without colliding on attempt numbers.
 - `baseline` freezes the bundle, task/verifier hashes, redacted-config hash,
   Droid version, pricing table, and claim IDs before its first live trial.
 
@@ -308,8 +310,9 @@ session *did* on the way there, by scanning the transcript a pack already
 carries — zero model calls, zero network:
 
 ```sh
-node bin/droidtune.js audit runs/<tune>/<task>/attempt-N   # one pack
-node bin/droidtune.js audit runs/<tune>                    # per-trial table + totals
+node bin/droidtune.js audit runs/<tune>/<route>/<task>/attempt-N   # one pack
+node bin/droidtune.js audit runs/<tune>/<route>                    # one route
+node bin/droidtune.js audit runs/<tune>                            # per-trial table + totals
 ```
 
 | Category | Fires when |

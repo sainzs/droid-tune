@@ -24,7 +24,11 @@ function makeEnv (mode) {
     // delete this key to simulate an unsourced credentials file. Values are
     // never asserted on or forwarded out of the parent env prefix-allowlist.
     env: { ...process.env, X_KEY: 'fake-test-credential', FAKE_DROID_MODE: mode, FAKE_DROID_SESSIONS_DIR: sessionsDir },
-    packDir: (r) => path.join(runsDir, 'ad-hoc', 't001-greet-script', 'attempt-1')
+    // The pack dir is exactly <runsDir>/<trialId> — deriving it from the
+    // returned trialId rather than hardcoding the segments means every test
+    // below also asserts that the runner's reported id and the path it wrote
+    // to cannot drift apart.
+    packDir: (r) => path.join(runsDir, ...String(r.trialId).split('/'))
   }
 }
 

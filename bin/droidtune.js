@@ -12,6 +12,7 @@ import { makeRunOne, runTriforce } from '../lib/triforce.js'
 import { runBaseline } from '../lib/baseline.js'
 import { resolveDroid } from '../lib/droid-path.js'
 import { resolveTuneFile } from '../lib/tune.js'
+import { routeSlug } from '../lib/paths.js'
 import { readObservations, summarize } from '../lib/weather.js'
 import { newestTranscript, renderFinding, renderWatchSummary, watchFile } from '../lib/watch.js'
 
@@ -270,13 +271,18 @@ async function cmdTrial (opts) {
   const tuneName = opts.tune ?? 'ad-hoc'
   const attempt = opts.attempt ?? 1
   const taskId = path.basename(taskDir)
-  const attemptManifestPath = (n) => path.join(resolvedRunsDir, tuneName, taskId, `attempt-${n}`, 'manifest.json')
+  // Key the guard on the SAME path runTrial will write — route segment included
+  // (lib/paths.js) — or it stops guarding anything: two routes at the same
+  // attempt number are distinct packs and must both be allowed to run.
+  const route = routeSlug(model)
+  const attemptDirFor = (n) => path.join(resolvedRunsDir, tuneName, route, taskId, `attempt-${n}`)
+  const attemptManifestPath = (n) => path.join(attemptDirFor(n), 'manifest.json')
   if (existsSync(attemptManifestPath(attempt))) {
     let next = attempt + 1
     while (existsSync(attemptManifestPath(next))) next++
     throw new Error(
       `attempt ${attempt} already has an evidence pack at ` +
-      `${path.join(resolvedRunsDir, tuneName, taskId, 'attempt-' + attempt)} — refusing to spend a live trial ` +
+      `${attemptDirFor(attempt)} — refusing to spend a live trial ` +
       `on a run that would fail at write time. Retry with --attempt ${next} (the next free attempt number).`
     )
   }

@@ -19,8 +19,9 @@
 //   node scripts/results-table.js --runs-dir runs/m4-flake3 --tasks t002-slugify,t003-path-canonicalize
 //   node scripts/results-table.js --runs-dir runs/m5-byok-sweep --title "BYOK sweep"
 //   node scripts/results-table.js --runs-dir runs/m4-flake3 --audit
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
+import { findPacks, packLabel } from '../lib/paths.js'
 import { CATEGORIES, auditPack } from '../lib/audit.js'
 
 const arg = (name, fallback = null) => {
@@ -73,38 +74,37 @@ function providerErrorKind (dir, results) {
 const shortModel = (id) =>
   (id ?? 'unknown').replace(/^custom:/, '').replace(/-OpenCode.*$/, '')
 
+// Pack discovery is depth-agnostic (lib/paths.js): a routed tree
+// (<runs>/<route>/<task>/attempt-N) and a pre-route one both enumerate. The task
+// is always the pack's parent directory; `label` carries the route when there is
+// one, so two routes' attempt-1 stay distinguishable in the audit rows.
 const rows = []
-for (const task of readdirSync(runsDir)) {
-  const taskDir = path.join(runsDir, task)
-  let st; try { st = statSync(taskDir) } catch { continue }
-  if (!st.isDirectory()) continue
+for (const dir of findPacks(runsDir)) {
+  const task = path.basename(path.dirname(dir))
   if (only.length && !only.includes(task)) continue
+  const rj = path.join(dir, 'results.json')
+  if (!existsSync(rj)) continue
 
-  for (const att of readdirSync(taskDir).filter(d => d.startsWith('attempt-'))) {
-    const dir = path.join(taskDir, att)
-    const rj = path.join(dir, 'results.json')
-    if (!existsSync(rj)) continue
+  let results = {}
+  try { results = JSON.parse(readFileSync(rj, 'utf8')) } catch { continue }
+  const outcome = results.outcome ?? 'ERROR'
 
-    let results = {}
-    try { results = JSON.parse(readFileSync(rj, 'utf8')) } catch { continue }
-    const outcome = results.outcome ?? 'ERROR'
+  let model = 'unknown'
+  try {
+    const m = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8'))
+    model = shortModel(m.provenance?.modelObserved ?? m.provenance?.modelRequested)
+  } catch {}
 
-    let model = 'unknown'
-    try {
-      const m = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8'))
-      model = shortModel(m.provenance?.modelObserved ?? m.provenance?.modelRequested)
-    } catch {}
-
-    rows.push({
-      task,
-      model,
-      attempt: att,
-      outcome,
-      durationMs: results.durationMs ?? null,
-      kind: NON_MODEL.has(outcome) ? providerErrorKind(dir, results) : null,
-      audit: withAudit ? auditPack(dir, { coverageWindow: auditWindow, stallThreshold: auditStall }) : null
-    })
-  }
+  rows.push({
+    task,
+    model,
+    attempt: path.basename(dir),
+    label: packLabel(runsDir, dir),
+    outcome,
+    durationMs: results.durationMs ?? null,
+    kind: NON_MODEL.has(outcome) ? providerErrorKind(dir, results) : null,
+    audit: withAudit ? auditPack(dir, { coverageWindow: auditWindow, stallThreshold: auditStall }) : null
+  })
 }
 
 if (rows.length === 0) {
@@ -163,7 +163,7 @@ if (withAudit) {
     console.log(`| --- | --- | ${CATEGORIES.map(() => '---').join(' | ')} | --- |`)
     for (const r of flagged) {
       const cells = CATEGORIES.map(c => r.audit.counts[c])
-      console.log(`| \`${r.task}/${r.attempt}\` | ${r.outcome} | ${cells.join(' | ')} | ${r.audit.total} |`)
+      console.log(`| \`${r.label}\` | ${r.outcome} | ${cells.join(' | ')} | ${r.audit.total} |`)
     }
     if (flagged.length === 0) {
       console.log('| — | — | ' + CATEGORIES.map(() => '0').join(' | ') + ' | 0 |')

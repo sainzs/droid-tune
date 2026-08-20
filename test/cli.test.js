@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import os from 'node:os'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { runTriforce } from '../lib/triforce.js'
@@ -243,6 +243,54 @@ test('trial refuses an --attempt collision BEFORE spawning droid, and suggests t
     // The suggested next attempt number actually works.
     const third = run([...baseArgs, '--attempt', '2'], { env })
     assert.equal(third.code, 0, `expected attempt 2 to pass: ${third.stdout}${third.stderr}`)
+  } finally {
+    rmSync(runsDir, { recursive: true, force: true })
+    rmSync(sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('two routes may share a tune, task and attempt number — packs are route-scoped', () => {
+  // The sweep case the route segment exists for: the preregistered claim runs
+  // one tune and one task across four routes at attempts 1..10. Without a route
+  // in the path, route 2's attempt-1 would trip the collision guard and the
+  // sweep could not run at all.
+  const runsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-routes-runs-'))
+  const sessionsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-routes-sess-'))
+  const configPath = path.join(runsDir, 'config.json')
+  writeFileSync(configPath, JSON.stringify({
+    customModels: [
+      { model: 'fake-model', id: 'custom:fake-0', provider: 'anthropic', baseUrl: 'https://api.z.ai/api/anthropic', apiKey: '${X_KEY}' },
+      { model: 'other-model', id: 'custom:other-1', provider: 'anthropic', baseUrl: 'https://api.z.ai/api/anthropic', apiKey: '${X_KEY}' }
+    ]
+  }))
+  const env = { ...process.env, X_KEY: 'fake-test-credential', FAKE_DROID_MODE: 'pass', FAKE_DROID_SESSIONS_DIR: sessionsDir }
+  const argsFor = (model) => [
+    'trial', '--task', 't001-greet-script', '--model', model,
+    '--tune', 'sweep', '--config', configPath, '--sessions-dir', sessionsDir,
+    '--droid-path', path.join(root, 'fixtures', 'bin', 'fake-droid-trial'),
+    '--runs-dir', runsDir
+  ]
+  try {
+    const a = run(argsFor('custom:fake-0'), { env })
+    assert.equal(a.code, 0, `route A attempt 1 should pass: ${a.stdout}${a.stderr}`)
+    const b = run(argsFor('custom:other-1'), { env })
+    assert.equal(b.code, 0, `route B attempt 1 must not collide with route A: ${b.stdout}${b.stderr}`)
+
+    // Both packs exist, side by side, under their own route.
+    for (const route of ['fake-0', 'other-1']) {
+      assert.ok(
+        existsSync(path.join(runsDir, 'sweep', route, 't001-greet-script', 'attempt-1', 'manifest.json')),
+        `expected a pack for route ${route}`
+      )
+    }
+
+    // Within one route the guard still fires, and still names the next free number.
+    const again = run(argsFor('custom:fake-0'), { env })
+    assert.equal(again.code, 1)
+    assert.match(again.stderr, /already has an evidence pack/)
+    assert.match(again.stderr, /--attempt 2/)
+    // …and it points at the route-scoped path, not the shared task path.
+    assert.match(again.stderr, /sweep\/fake-0\/t001-greet-script/)
   } finally {
     rmSync(runsDir, { recursive: true, force: true })
     rmSync(sessionsDir, { recursive: true, force: true })

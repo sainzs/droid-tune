@@ -15,8 +15,9 @@
 // selects a subset of task directories to aggregate (and the report states the
 // included scope so a reader can reproduce a published number). `--json` emits
 // the same aggregation as a single JSON object instead of the text report.
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
+import { findPacks, packLabel } from '../lib/paths.js'
 
 // --- argument parsing ---
 function nextVal (i, flag) {
@@ -43,10 +44,12 @@ function parseArgs () {
 const { runsDir, taskFilter, json } = parseArgs()
 if (!existsSync(runsDir)) { console.error(`runs dir not found: ${runsDir}`); process.exit(2) }
 
-// Actual task directories on disk (used to validate the filter).
-const taskEntries = readdirSync(runsDir).filter(d => {
-  try { return statSync(path.join(runsDir, d)).isDirectory() } catch { return false }
-})
+// Every pack under the runs dir, at whatever depth (lib/paths.js): a routed
+// tree nests one level deeper than a pre-route one, and --task must validate
+// against the tasks actually present rather than against top-level directory
+// names, which in a routed tree are routes.
+const packDirs = findPacks(runsDir)
+const taskEntries = [...new Set(packDirs.map(d => path.basename(path.dirname(d))))]
 if (taskFilter.length > 0) {
   const missing = taskFilter.filter(id => !taskEntries.includes(id))
   if (missing.length > 0) {
@@ -67,25 +70,21 @@ const SHORT = {
 const short = (id) => SHORT[id] ?? (id ?? 'unknown').replace(/^custom:/, '').replace(/-OpenCode.*$/, '')
 
 const rows = []
-for (const task of readdirSync(runsDir)) {
+for (const dir of packDirs) {
+  const task = path.basename(path.dirname(dir))
   if (filterSet.size > 0 && !filterSet.has(task)) continue
-  const taskDir = path.join(runsDir, task)
-  let attempts = []
-  try { attempts = readdirSync(taskDir).filter(d => d.startsWith('attempt-')) } catch { continue }
-  for (const att of attempts) {
-    const rj = path.join(taskDir, att, 'results.json')
-    const mj = path.join(taskDir, att, 'manifest.json')
-    if (!existsSync(rj)) continue
-    let outcome = 'ERROR', model = 'unknown', tokens = null
-    try { outcome = JSON.parse(readFileSync(rj, 'utf8')).outcome ?? 'ERROR' } catch {}
-    try {
-      const m = JSON.parse(readFileSync(mj, 'utf8'))
-      model = short(m.provenance?.modelObserved ?? m.provenance?.modelRequested)
-    } catch {}
-    const uj = path.join(taskDir, att, 'usage.json')
-    if (existsSync(uj)) { try { tokens = JSON.parse(readFileSync(uj, 'utf8')) } catch {} }
-    rows.push({ task, model, attempt: att, outcome, tokens })
-  }
+  const rj = path.join(dir, 'results.json')
+  const mj = path.join(dir, 'manifest.json')
+  if (!existsSync(rj)) continue
+  let outcome = 'ERROR', model = 'unknown', tokens = null
+  try { outcome = JSON.parse(readFileSync(rj, 'utf8')).outcome ?? 'ERROR' } catch {}
+  try {
+    const m = JSON.parse(readFileSync(mj, 'utf8'))
+    model = short(m.provenance?.modelObserved ?? m.provenance?.modelRequested)
+  } catch {}
+  const uj = path.join(dir, 'usage.json')
+  if (existsSync(uj)) { try { tokens = JSON.parse(readFileSync(uj, 'utf8')) } catch {} }
+  rows.push({ task, model, attempt: path.basename(dir), label: packLabel(runsDir, dir), outcome, tokens })
 }
 
 const tasks = [...new Set(rows.map(r => r.task))].sort()

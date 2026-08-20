@@ -25,6 +25,33 @@ function packTree (spec) {
   return dir
 }
 
+// A routed tree nests one level deeper than a pre-route one. A badge that
+// counted only one shape would under-report the very sweep it summarizes.
+function routedPackTree (spec) {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-badge-routed-'))
+  for (const [rel, outcome] of Object.entries(spec)) {
+    const attDir = path.join(dir, rel)
+    mkdirSync(attDir, { recursive: true })
+    writeFileSync(path.join(attDir, 'results.json'), JSON.stringify({ outcome }))
+  }
+  return dir
+}
+
+test('badgeFromRuns counts routed and pre-route packs in one tree', () => {
+  const dir = routedPackTree({
+    'hy3-free/t004/attempt-1': 'VERIFIED_PASS',
+    'hy3-free/t004/attempt-2': 'NO_SUBMISSION',
+    'nemotron-3-ultra-free/t004/attempt-1': 'VERIFIED_PASS',
+    't900-demo/attempt-1': 'VERIFIED_PASS'
+  })
+  try {
+    const badge = badgeFromRuns(dir)
+    assert.match(badge.message, /3\/4/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 // --- color ---------------------------------------------------------------
 test('badge color tracks the ratio, and absent data is grey rather than green', () => {
   assert.equal(colorForRatio(1), 'brightgreen')
