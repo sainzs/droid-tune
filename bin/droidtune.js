@@ -215,6 +215,10 @@ async function cmdTrial (opts) {
       `Run 'droidtune diagnose' to see your configured customModels.`
     )
   }
+  // Validate the tune spec before anything heavier fires (droid binary
+  // resolution, collision guard): a typo'd --tune-file must be the same
+  // usage error (exit 2) on a machine with no droid installed at all.
+  const tuneFile = resolveTuneSpec(opts.tuneFile)
   const paths = defaultTrialPaths(opts)
   const model = opts.model
   // Resolve the task dir with the SAME helper `run` uses (below), instead of
@@ -265,7 +269,7 @@ async function cmdTrial (opts) {
     attempt,
     autoLevel: opts.auto ?? 'high',
     timeoutMs: opts.timeoutMs,
-    tuneFile: resolveTuneSpec(opts.tuneFile)
+    tuneFile
   })
   const reportCmd = `node ${path.join(REPO_ROOT, 'scripts', 'results-table.js')} --runs-dir ${resolvedRunsDir}`
   // `trial` is always a development/ad-hoc run — it never freezes bundle
