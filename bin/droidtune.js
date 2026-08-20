@@ -194,6 +194,25 @@ async function cmdTrial (opts) {
   // default internally, keeps the value available to print in the report
   // hint below.
   const resolvedRunsDir = path.resolve(opts.runsDir ?? path.join(REPO_ROOT, 'runs'))
+  // Collision guard: lib/pack.js already refuses to overwrite a non-empty
+  // attempt dir, but only at the very END of runTrial — after a full LIVE
+  // droid exec has already run and spent whatever the route costs. Detect
+  // the same collision here, BEFORE spawning droid, and refuse with the next
+  // free attempt number instead of wasting a live spend on a trial that was
+  // always going to fail at write time.
+  const tuneName = opts.tune ?? 'ad-hoc'
+  const attempt = opts.attempt ?? 1
+  const taskId = path.basename(taskDir)
+  const attemptManifestPath = (n) => path.join(resolvedRunsDir, tuneName, taskId, `attempt-${n}`, 'manifest.json')
+  if (existsSync(attemptManifestPath(attempt))) {
+    let next = attempt + 1
+    while (existsSync(attemptManifestPath(next))) next++
+    throw new Error(
+      `attempt ${attempt} already has an evidence pack at ` +
+      `${path.join(resolvedRunsDir, tuneName, taskId, 'attempt-' + attempt)} — refusing to spend a live trial ` +
+      `on a run that would fail at write time. Retry with --attempt ${next} (the next free attempt number).`
+    )
+  }
   const result = await runTrial({
     taskDir,
     model,
@@ -201,8 +220,8 @@ async function cmdTrial (opts) {
     sessionsDir: paths.sessionsDir,
     configPath: paths.configPath,
     runsDir: resolvedRunsDir,
-    tuneName: opts.tune,
-    attempt: opts.attempt,
+    tuneName,
+    attempt,
     autoLevel: opts.auto ?? 'high',
     timeoutMs: opts.timeoutMs
   })

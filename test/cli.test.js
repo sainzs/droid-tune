@@ -142,13 +142,23 @@ test('trial without --task exits 2 before any model/spend concern', () => {
 })
 
 test('trial with a non-working --droid-path fails fast with the DT001 fault code (unified resolveDroid)', () => {
-  const r = run([
-    'trial', '--task', 'tasks/t001-greet-script', '--model', 'hy3-free',
-    '--droid-path', path.join(root, 'does-not-exist-droid')
-  ])
-  assert.equal(r.code, 1)
-  assert.match(r.stderr, /droid CLI not found/)
-  assert.match(r.stderr, /DT001/)
+  // Isolated --runs-dir: an unrelated evidence pack already sitting at the
+  // default attempt-1 path (from an earlier trial run of this same task)
+  // must not make this test observe the attempt-collision guard instead of
+  // the DT001 path it's actually testing.
+  const runsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-dt001-runs-'))
+  try {
+    const r = run([
+      'trial', '--task', 'tasks/t001-greet-script', '--model', 'hy3-free',
+      '--droid-path', path.join(root, 'does-not-exist-droid'),
+      '--runs-dir', runsDir
+    ])
+    assert.equal(r.code, 1)
+    assert.match(r.stderr, /droid CLI not found/)
+    assert.match(r.stderr, /DT001/)
+  } finally {
+    rmSync(runsDir, { recursive: true, force: true })
+  }
 })
 
 test('trial resolves --task the same way `run` does, regardless of invoking cwd (plugin-cwd fix)', () => {
@@ -159,16 +169,55 @@ test('trial resolves --task the same way `run` does, regardless of invoking cwd 
   // --droid-path so the command fails fast on DT001 (proving task resolution
   // already succeeded) rather than spawning anything live.
   const elsewhere = mkdtempSync(path.join(os.tmpdir(), 'droidtune-elsewhere-'))
+  const runsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-elsewhere-runs-'))
   try {
     const r = run([
       'trial', '--task', 't001-greet-script', '--model', 'hy3-free',
-      '--droid-path', path.join(root, 'does-not-exist-droid')
+      '--droid-path', path.join(root, 'does-not-exist-droid'),
+      '--runs-dir', runsDir
     ], { cwd: elsewhere })
     assert.equal(r.code, 1, `expected DT001 (task resolved) not a task-not-found usage error: ${r.stderr}`)
     assert.match(r.stderr, /DT001/)
     assert.doesNotMatch(r.stderr, /task not found/)
   } finally {
     rmSync(elsewhere, { recursive: true, force: true })
+    rmSync(runsDir, { recursive: true, force: true })
+  }
+})
+
+test('trial refuses an --attempt collision BEFORE spawning droid, and suggests the next free attempt', () => {
+  const runsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-collision-runs-'))
+  const sessionsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-collision-sess-'))
+  const configPath = path.join(runsDir, 'config.json')
+  writeFileSync(configPath, JSON.stringify({
+    customModels: [{ model: 'fake-model', id: 'custom:fake-0', provider: 'anthropic', baseUrl: 'https://api.z.ai/api/anthropic', apiKey: '${X_KEY}' }]
+  }))
+  const env = { ...process.env, X_KEY: 'fake-test-credential', FAKE_DROID_MODE: 'pass', FAKE_DROID_SESSIONS_DIR: sessionsDir }
+  const baseArgs = [
+    'trial', '--task', 't001-greet-script', '--model', 'custom:fake-0',
+    '--config', configPath, '--sessions-dir', sessionsDir,
+    '--droid-path', path.join(root, 'fixtures', 'bin', 'fake-droid-trial'),
+    '--runs-dir', runsDir
+  ]
+  try {
+    const first = run(baseArgs, { env })
+    assert.equal(first.code, 0, `expected first attempt to pass: ${first.stdout}${first.stderr}`)
+
+    // Re-running at the SAME attempt number (default 1) must refuse before
+    // spawning droid at all — the fixture would exit 0/pass again if it were
+    // ever invoked, so a nonzero exit here proves the guard fired first, not
+    // pack.js's end-of-run non-empty-dir check.
+    const second = run(baseArgs, { env })
+    assert.equal(second.code, 1)
+    assert.match(second.stderr, /already has an evidence pack/)
+    assert.match(second.stderr, /--attempt 2/)
+
+    // The suggested next attempt number actually works.
+    const third = run([...baseArgs, '--attempt', '2'], { env })
+    assert.equal(third.code, 0, `expected attempt 2 to pass: ${third.stdout}${third.stderr}`)
+  } finally {
+    rmSync(runsDir, { recursive: true, force: true })
+    rmSync(sessionsDir, { recursive: true, force: true })
   }
 })
 
