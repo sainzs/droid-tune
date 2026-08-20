@@ -176,20 +176,39 @@ async function cmdTrial (opts) {
   }
   const paths = defaultTrialPaths(opts)
   const model = opts.model
+  // Resolve the task dir with the SAME helper `run` uses (below), instead of
+  // trial's own ad-hoc handling of opts.task. This matters most for plugin
+  // installs: a relative --task resolves against process.cwd() (wherever the
+  // invoking shell/droid session happens to be), not against the plugin
+  // bundle where tasks/ actually lives, so a plugin-relative task id like
+  // "t001-greet-script" only worked if the caller's cwd happened to be the
+  // plugin root. resolveTaskDir falls back to REPO_ROOT/tasks (which is
+  // DROID_PLUGIN_ROOT/tasks for a plugin install) so it works regardless of
+  // invoking cwd.
+  const taskDir = resolveTaskDir(opts.task)
+  if (!existsSync(taskDir)) usageError(`task not found: ${opts.task}`)
+  // Evidence-pack root: explicit --runs-dir wins, otherwise REPO_ROOT/runs
+  // (matches `baseline`'s resolution exactly, and — for a plugin install —
+  // resolves to DROID_PLUGIN_ROOT/runs regardless of invoking cwd). Resolving
+  // this explicitly here, rather than leaving it undefined for runner.js to
+  // default internally, keeps the value available to print in the report
+  // hint below.
+  const resolvedRunsDir = path.resolve(opts.runsDir ?? path.join(REPO_ROOT, 'runs'))
   const result = await runTrial({
-    taskDir: opts.task,
+    taskDir,
     model,
     droidPath: resolveDroidOrDie(opts),
     sessionsDir: paths.sessionsDir,
     configPath: paths.configPath,
-    runsDir: opts.runsDir,
+    runsDir: resolvedRunsDir,
     tuneName: opts.tune,
     attempt: opts.attempt,
     autoLevel: opts.auto ?? 'high',
     timeoutMs: opts.timeoutMs
   })
+  const reportCmd = `node ${path.join(REPO_ROOT, 'scripts', 'results-table.js')} --runs-dir ${resolvedRunsDir}`
   if (opts.json) {
-    process.stdout.write(JSON.stringify(result, null, 2) + '\n')
+    process.stdout.write(JSON.stringify({ ...result, reportCmd }, null, 2) + '\n')
   } else {
     const r = result.results
     const lines = [
@@ -198,7 +217,8 @@ async function cmdTrial (opts) {
       `  duration   ${r.durationMs}ms`,
       r.commits ? `  commits    ${r.commits.length} (${r.commits[0]})` : null,
       result.usage ? `  usage      in ${result.usage.inputTokens} · out ${result.usage.outputTokens} · cacheRead ${result.usage.cacheReadTokens} · route ${result.usage.routeClass}` : null,
-      `  pack       ${result.manifestPath}`
+      `  pack       ${result.manifestPath}`,
+      `  report     ${reportCmd}`
     ].filter(Boolean)
     process.stdout.write(lines.join('\n') + '\n')
   }

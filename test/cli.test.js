@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import os from 'node:os'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { runTriforce } from '../lib/triforce.js'
@@ -149,6 +149,65 @@ test('trial with a non-working --droid-path fails fast with the DT001 fault code
   assert.equal(r.code, 1)
   assert.match(r.stderr, /droid CLI not found/)
   assert.match(r.stderr, /DT001/)
+})
+
+test('trial resolves --task the same way `run` does, regardless of invoking cwd (plugin-cwd fix)', () => {
+  // Simulates a plugin install: droid is invoked from some unrelated project
+  // directory (cwd), but the task id is bundled inside the plugin/repo tree
+  // (REPO_ROOT/tasks). A bare short id must resolve via REPO_ROOT/tasks, not
+  // relative to whatever cwd happened to invoke the command. Use a bad
+  // --droid-path so the command fails fast on DT001 (proving task resolution
+  // already succeeded) rather than spawning anything live.
+  const elsewhere = mkdtempSync(path.join(os.tmpdir(), 'droidtune-elsewhere-'))
+  try {
+    const r = run([
+      'trial', '--task', 't001-greet-script', '--model', 'hy3-free',
+      '--droid-path', path.join(root, 'does-not-exist-droid')
+    ], { cwd: elsewhere })
+    assert.equal(r.code, 1, `expected DT001 (task resolved) not a task-not-found usage error: ${r.stderr}`)
+    assert.match(r.stderr, /DT001/)
+    assert.doesNotMatch(r.stderr, /task not found/)
+  } finally {
+    rmSync(elsewhere, { recursive: true, force: true })
+  }
+})
+
+test('trial errors on an unresolvable --task before any droid/model concern', () => {
+  const r = run(['trial', '--task', 'not-a-real-task-xyz', '--model', 'hy3-free'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /task not found/)
+})
+
+test('trial (fixture droid, pass mode) prints the pack path AND the exact report command to read it back', () => {
+  // Uses fixtures/bin/fake-droid-trial (a local shell fixture, no live spend,
+  // no network) — same fixture test/runner.test.js uses for full-trial
+  // coverage. Verifies bin/droidtune.js's human output extends the existing
+  // `pack ...` line with an exact, runnable `report ...` line that points at
+  // the SAME --runs-dir the trial actually wrote to.
+  const runsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-cli-runs-'))
+  const sessionsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-cli-sess-'))
+  const configPath = path.join(runsDir, 'config.json')
+  writeFileSync(configPath, JSON.stringify({
+    customModels: [{ model: 'fake-model', id: 'custom:fake-0', provider: 'anthropic', baseUrl: 'https://api.z.ai/api/anthropic', apiKey: '${X_KEY}' }]
+  }))
+  try {
+    const r = run([
+      'trial', '--task', 't001-greet-script', '--model', 'custom:fake-0',
+      '--config', configPath, '--sessions-dir', sessionsDir,
+      '--droid-path', path.join(root, 'fixtures', 'bin', 'fake-droid-trial'),
+      '--runs-dir', runsDir
+    ], { env: { ...process.env, X_KEY: 'fake-test-credential', FAKE_DROID_MODE: 'pass', FAKE_DROID_SESSIONS_DIR: sessionsDir } })
+    assert.equal(r.code, 0, `expected VERIFIED_PASS: ${r.stdout}${r.stderr}`)
+    assert.match(r.stdout, /^ {2}pack {7}.*manifest\.json$/m)
+    assert.match(r.stdout, /^ {2}report {5}node .*results-table\.js --runs-dir /m)
+    // The report command's --runs-dir must be the SAME dir the pack was
+    // actually written under — this is the exact mismatch the plugin bug had.
+    const reportLine = r.stdout.split('\n').find(l => l.trim().startsWith('report'))
+    assert.ok(reportLine.includes(runsDir), `report command does not reference the actual runs dir: ${reportLine}`)
+  } finally {
+    rmSync(runsDir, { recursive: true, force: true })
+    rmSync(sessionsDir, { recursive: true, force: true })
+  }
 })
 
 test('baseline with a non-working --droid-path fails fast with the DT001 fault code (unified resolveDroid)', () => {
