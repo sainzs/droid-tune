@@ -66,7 +66,7 @@ test('--demo human output renders findings and verdict', () => {
   const r = run(['diagnose', '--demo'])
   assert.equal(r.code, 1)
   assert.match(r.stdout, /DROID TUNE-UP — DIAGNOSE/)
-  assert.match(r.stdout, /FAULT DT002/)
+  assert.match(r.stdout, /FAULT {2}.*plain text.*\(DT002\)/)
   assert.match(r.stdout, /5 fault\(s\)/)
 })
 
