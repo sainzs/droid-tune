@@ -1,6 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
+import os from 'node:os'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { runTriforce } from '../lib/triforce.js'
@@ -69,14 +71,54 @@ test('--demo human output renders findings and verdict', () => {
 })
 
 test('clean config + sessions exit 0', () => {
-  const r = run([
-    'diagnose',
-    '--config', path.join(root, 'fixtures', 'settings', 'clean-settings.json'),
-    '--sessions-dir', path.join(root, 'fixtures', 'sessions-clean'),
-    '--droid-path', path.join(root, 'fixtures', 'bin', 'fake-droid')
-  ])
-  assert.equal(r.code, 0)
-  assert.match(r.stdout, /clean bill of health/)
+  // clean-settings.json references ${ZAI_API_KEY}; the credential preflight
+  // (DT010) requires it to be present. Set it explicitly and point HOME at an
+  // empty temp dir so this assertion is hermetic and cannot pass-by-accident
+  // off whatever ~/.factory/env.sh happens to exist on the machine running
+  // the suite.
+  const fakeHome = mkdtempSync(path.join(os.tmpdir(), 'droidtune-clean-home-'))
+  try {
+    const r = run([
+      'diagnose',
+      '--config', path.join(root, 'fixtures', 'settings', 'clean-settings.json'),
+      '--sessions-dir', path.join(root, 'fixtures', 'sessions-clean'),
+      '--droid-path', path.join(root, 'fixtures', 'bin', 'fake-droid')
+    ], { env: { ...process.env, HOME: fakeHome, ZAI_API_KEY: 'fixture-value-not-a-real-key' } })
+    assert.equal(r.code, 0)
+    assert.match(r.stdout, /clean bill of health/)
+  } finally {
+    rmSync(fakeHome, { recursive: true, force: true })
+  }
+})
+
+test('clean config exits 1 with DT010 when the referenced credential is unset (no env.sh)', () => {
+  const fakeHome = mkdtempSync(path.join(os.tmpdir(), 'droidtune-nocred-home-'))
+  try {
+    const env = { ...process.env, HOME: fakeHome }
+    delete env.ZAI_API_KEY
+    const r = run([
+      'diagnose', '--json',
+      '--config', path.join(root, 'fixtures', 'settings', 'clean-settings.json'),
+      '--sessions-dir', path.join(root, 'fixtures', 'sessions-clean'),
+      '--droid-path', path.join(root, 'fixtures', 'bin', 'fake-droid')
+    ], { env })
+    assert.equal(r.code, 1)
+    const parsed = JSON.parse(r.stdout)
+    const dt010 = parsed.findings.find(f => f.id === 'DT010')
+    assert.ok(dt010, 'expected a DT010 finding')
+    assert.equal(dt010.severity, 'fault')
+    assert.match(dt010.summary, /ZAI_API_KEY/)
+    // Never leak the credential VALUE, only the NAME.
+    assert.ok(!JSON.stringify(parsed).includes('fixture-value-not-a-real-key'))
+  } finally {
+    rmSync(fakeHome, { recursive: true, force: true })
+  }
+})
+
+test('--demo skips the credential preflight even though fixtures reference ${ZAI_API_KEY}', () => {
+  const r = run(['diagnose', '--demo', '--json'])
+  const parsed = JSON.parse(r.stdout)
+  assert.ok(!parsed.findings.some(f => f.id === 'DT010'), 'DT010 should not fire under --demo')
 })
 
 test('--demo --probe exits 2 (probe needs live droid)', () => {
