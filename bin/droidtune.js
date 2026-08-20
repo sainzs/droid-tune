@@ -226,8 +226,15 @@ async function cmdTrial (opts) {
     timeoutMs: opts.timeoutMs
   })
   const reportCmd = `node ${path.join(REPO_ROOT, 'scripts', 'results-table.js')} --runs-dir ${resolvedRunsDir}`
+  // `trial` is always a development/ad-hoc run — it never freezes bundle
+  // provenance, pricing, or config the way `baseline` does (see PLAN §8
+  // Claims Integrity Protocol; AGENTS.md: "claim-eligible published packs
+  // begin with M5 baselines"). Label it explicitly so a scratch pack under
+  // runs/<tune>/... can never be mistaken for claim-grade evidence just
+  // because it has a manifest and a hash-verified tree.
+  const claimEligible = false
   if (opts.json) {
-    process.stdout.write(JSON.stringify({ ...result, reportCmd }, null, 2) + '\n')
+    process.stdout.write(JSON.stringify({ ...result, claimEligible, reportCmd }, null, 2) + '\n')
   } else {
     const r = result.results
     const lines = [
@@ -237,7 +244,8 @@ async function cmdTrial (opts) {
       r.commits ? `  commits    ${r.commits.length} (${r.commits[0]})` : null,
       result.usage ? `  usage      in ${result.usage.inputTokens} · out ${result.usage.outputTokens} · cacheRead ${result.usage.cacheReadTokens} · route ${result.usage.routeClass}` : null,
       `  pack       ${result.manifestPath}`,
-      `  report     ${reportCmd}`
+      `  report     ${reportCmd}`,
+      `  claimEligible false — development/ad-hoc pack, not frozen baseline evidence (see 'droidtune baseline')`
     ].filter(Boolean)
     process.stdout.write(lines.join('\n') + '\n')
   }

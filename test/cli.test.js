@@ -259,6 +259,35 @@ test('trial (fixture droid, pass mode) prints the pack path AND the exact report
   }
 })
 
+test('trial labels its pack claimEligible:false in both human and --json output (item 6c)', () => {
+  const runsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-claim-runs-'))
+  const sessionsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-claim-sess-'))
+  const configPath = path.join(runsDir, 'config.json')
+  writeFileSync(configPath, JSON.stringify({
+    customModels: [{ model: 'fake-model', id: 'custom:fake-0', provider: 'anthropic', baseUrl: 'https://api.z.ai/api/anthropic', apiKey: '${X_KEY}' }]
+  }))
+  const env = { ...process.env, X_KEY: 'fake-test-credential', FAKE_DROID_MODE: 'pass', FAKE_DROID_SESSIONS_DIR: sessionsDir }
+  const baseArgs = [
+    'trial', '--task', 't001-greet-script', '--model', 'custom:fake-0',
+    '--config', configPath, '--sessions-dir', sessionsDir,
+    '--droid-path', path.join(root, 'fixtures', 'bin', 'fake-droid-trial'),
+    '--runs-dir', runsDir
+  ]
+  try {
+    const human = run(baseArgs, { env })
+    assert.equal(human.code, 0)
+    assert.match(human.stdout, /claimEligible false — development\/ad-hoc pack/)
+
+    const json = run([...baseArgs, '--attempt', '2', '--json'], { env })
+    assert.equal(json.code, 0)
+    const parsed = JSON.parse(json.stdout)
+    assert.equal(parsed.claimEligible, false)
+  } finally {
+    rmSync(runsDir, { recursive: true, force: true })
+    rmSync(sessionsDir, { recursive: true, force: true })
+  }
+})
+
 test('baseline with a non-working --droid-path fails fast with the DT001 fault code (unified resolveDroid)', () => {
   const r = run([
     'baseline', '--confirm-spend',
