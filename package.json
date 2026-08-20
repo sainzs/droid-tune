@@ -10,8 +10,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test \"test/**/*.test.js\"",
-    "check": "node --test \"test/**/*.test.js\" && node bin/droidtune.js --help > /dev/null"
+    "test": "node --test test/*.test.js",
+    "check": "node --test test/*.test.js && node bin/droidtune.js --help > /dev/null"
   },
   "license": "MIT",
   "private": true
