@@ -19,7 +19,7 @@ Usage:
   droidtune trial [flags]        Run one task end-to-end through droid exec; write an evidence pack
   droidtune baseline [flags]     Run the frozen native-Droid suite (live; explicit spend confirmation)
   droidtune run <task> [flags]   Grade a task offline (oracle/--noop/--cheat) — triforce self-test
-  droidtune triforce             Run the offline tri-force self-test (7 legs)
+  droidtune triforce             Run the offline tri-force self-test (49 legs)
 
 diagnose flags:
   --json                 Machine-readable output

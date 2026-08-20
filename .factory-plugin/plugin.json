@@ -12,7 +12,6 @@
     "factory-droid",
     "tuning",
     "verification",
-    "diagnostics",
-    "benchmark"
+    "diagnostics"
   ]
 }

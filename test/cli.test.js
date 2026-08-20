@@ -359,7 +359,7 @@ test('runTriforce: one wrong verdict → ok:false', () => {
   assert.deepEqual(failing, ['noop #1'])
 })
 
-test('triforce CLI exits 0 (7 offline legs)', () => {
+test('triforce CLI exits 0 (49 offline legs)', () => {
   const r = run(['triforce'])
   assert.equal(r.code, 0, `triforce exited ${r.code}: ${r.stdout}${r.stderr}`)
   assert.match(r.stdout, /ok oracle #1 -> VERIFIED_PASS/)

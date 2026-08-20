@@ -6,7 +6,7 @@
 // provenance.modelObserved, so distinct models never collapse.
 //
 // Usage:
-//   node scripts/flake-report.js [--runs-dir runs/m4-flake2]
+//   node scripts/flake-report.js [--runs-dir runs/m4-flake3]
 //                               [--task t002-slugify [--task t003-...]]
 //                               [--tasks t002-slugify,t003-...]
 //                               [--json]
@@ -25,7 +25,7 @@ function nextVal (i, flag) {
   return v
 }
 function parseArgs () {
-  let runsDir = 'runs/m4-flake2'
+  let runsDir = 'runs/m4-flake3'
   const taskFilter = []
   let json = false
   for (let i = 2; i < process.argv.length; i++) {

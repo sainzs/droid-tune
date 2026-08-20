@@ -55,6 +55,8 @@ t007 7/8. **TOTAL 29/40 PASS (73%)**; 1.30M in / 133k out tokens ($0).
 4. **One transient PROVIDER_ERROR** (t007/hy3 attempt-33) — free-route 429,
    correctly classified excludable by the S2 gate.
 
+**Erratum (2026-08-20):** The evidence pack shows `Exec ended early: insufficient permission to proceed` — a permission/autonomy abort, not a provider 429.
+
 ## Methodology notes (Claims Integrity, §8)
 
 - Runner changed mid-sweep: env-allowlist (`7546aa8`) landed while `m4-flake3`
