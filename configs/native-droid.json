@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "native-droid-v1",
+  "tuneName": "native-droid",
+  "route": "droid-core-default",
+  "tasks": [
+    "t002-slugify",
+    "t003-path-canonicalize",
+    "t004-git-surgery",
+    "t005-agents-md-compliance",
+    "t006-safe-listdir",
+    "t007-rename-symbol"
+  ],
+  "attempts": 1,
+  "autoLevel": "high",
+  "timeoutMs": 300000,
+  "budget": {
+    "maxOutputTokensPerTrial": 100000,
+    "cumulativeOutputTokens": 600000
+  },
+  "pricingTableId": "factory-credits-observed-v1",
+  "retryPolicy": { "transientProviderErrors": 0 },
+  "claimIds": ["dt-v0-cache-stability"]
+}
