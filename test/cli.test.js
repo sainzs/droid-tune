@@ -41,6 +41,12 @@ test('unknown flag exits 2', () => {
   assert.match(r.stderr, /unknown flag/)
 })
 
+test('baseline refuses to run without explicit spend confirmation', () => {
+  const r = run(['baseline'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /requires --confirm-spend/)
+})
+
 test('--limit without value exits 2', () => {
   const r = run(['diagnose', '--demo', '--limit'])
   assert.equal(r.code, 2)

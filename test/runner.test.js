@@ -50,6 +50,47 @@ test('pass mode → VERIFIED_PASS with complete evidence pack', async () => {
   }
 })
 
+test('native route omits model override and writes observed-credit pricing', async () => {
+  const ctx = makeEnv('pass')
+  try {
+    const r = await runTrial({
+      taskDir,
+      native: true,
+      pricingTableId: 'factory-credits-observed-v1',
+      droidPath: fakeDroid,
+      sessionsDir: ctx.sessionsDir,
+      configPath: ctx.configPath,
+      runsDir: ctx.runsDir,
+      env: ctx.env
+    })
+    assert.equal(r.outcome, 'VERIFIED_PASS')
+    const pack = ctx.packDir(r)
+    const manifest = JSON.parse(readFileSync(path.join(pack, 'manifest.json'), 'utf8'))
+    assert.equal(manifest.provenance.modelRequested, 'native-droid')
+    assert.equal(manifest.provenance.routeClass, 'core')
+    const pricing = JSON.parse(readFileSync(path.join(pack, 'pricing.json'), 'utf8'))
+    assert.equal(pricing.observedFactoryCredits, 0)
+    assert.equal(pricing.costUsd, null)
+  } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('relative runsDir still keeps grader artifacts outside the grading clone', async () => {
+  const ctx = makeEnv('pass')
+  try {
+    const relativeRunsDir = path.relative(process.cwd(), ctx.runsDir)
+    const r = await runTrial({ taskDir, model: 'custom:fake-0', droidPath: fakeDroid, sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: relativeRunsDir, env: ctx.env })
+    assert.equal(r.outcome, 'VERIFIED_PASS')
+    assert.ok(path.isAbsolute(r.manifestPath))
+    assert.ok(existsSync(path.join(ctx.packDir(r), 'reward.json')))
+  } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
 test('nosubmit mode → NO_SUBMISSION, tests never run', async () => {
   const ctx = makeEnv('nosubmit')
   try {

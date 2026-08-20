@@ -7,6 +7,7 @@ import { runDiagnose } from '../lib/diagnose.js'
 import { renderDiagnose } from '../lib/report.js'
 import { runTrial } from '../lib/runner.js'
 import { makeRunOne, runTriforce } from '../lib/triforce.js'
+import { runBaseline } from '../lib/baseline.js'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -15,6 +16,7 @@ const USAGE = `droidtune — Droid Tune-Up: diagnose, tune, verify (more verifie
 Usage:
   droidtune diagnose [flags]     Check protocol, model routing, cache, and configuration health
   droidtune trial [flags]        Run one task end-to-end through droid exec; write an evidence pack
+  droidtune baseline [flags]     Run the frozen native-Droid suite (live; explicit spend confirmation)
   droidtune run <task> [flags]   Grade a task offline (oracle/--noop/--cheat) — triforce self-test
   droidtune triforce             Run the offline tri-force self-test (7 legs)
 
@@ -34,6 +36,11 @@ trial flags:
   --attempt <n>          Attempt number (default 1)
   --auto <level>         Autonomy: low|medium|high (default high)
   --timeout-ms <n>       Per-trial timeout (default 300000)
+  --runs-dir <path>      Evidence-pack root (default ./runs)
+
+baseline flags:
+  --bundle <file>        Frozen bundle spec (default configs/native-droid.json)
+  --confirm-spend        Required acknowledgement before any live baseline trial
   --runs-dir <path>      Evidence-pack root (default ./runs)
 
 run flags:
@@ -75,7 +82,8 @@ const VALUE_FLAGS = new Map([
   ['--timeout-ms', 'timeoutMs'],
   ['--runs-dir', 'runsDir'],
   ['--attempt', 'attempt'],
-  ['--cheat', 'cheat']
+  ['--cheat', 'cheat'],
+  ['--bundle', 'bundlePath']
 ])
 
 function parseArgs (argv) {
@@ -95,6 +103,8 @@ function parseArgs (argv) {
       opts.offline = true
     } else if (a === '--noop') {
       opts.noop = true
+    } else if (a === '--confirm-spend') {
+      opts.confirmSpend = true
     } else if (cmd === 'run' && !a.startsWith('-') && opts.task === undefined) {
       opts.task = a
     } else if (VALUE_FLAGS.has(a)) {
@@ -171,6 +181,24 @@ async function cmdTrial (opts) {
   process.exitCode = result.outcome === 'VERIFIED_PASS' ? 0 : 1
 }
 
+async function cmdBaseline (opts) {
+  if (!opts.confirmSpend) usageError('baseline requires --confirm-spend; it runs live Droid trials')
+  const paths = defaultTrialPaths(opts)
+  const result = await runBaseline({
+    bundlePath: path.resolve(opts.bundlePath ?? path.join(REPO_ROOT, 'configs', 'native-droid.json')),
+    repoRoot: REPO_ROOT,
+    configPath: paths.configPath,
+    sessionsDir: paths.sessionsDir,
+    droidPath: opts.droidPath ?? path.join(os.homedir(), '.local', 'bin', 'droid'),
+    runsDir: path.resolve(opts.runsDir ?? path.join(REPO_ROOT, 'runs')),
+    confirmSpend: true
+  })
+  const pass = result.results.filter(r => r.outcome === 'VERIFIED_PASS').length
+  if (opts.json) process.stdout.write(JSON.stringify(result, null, 2) + '\n')
+  else process.stdout.write(`BASELINE ${result.bundle.id}\n  outcomes   ${pass}/${result.results.length} VERIFIED_PASS${result.stoppedByBudget ? ' (stopped by budget)' : ''}\n  snapshot   ${path.join(opts.runsDir ?? path.join(REPO_ROOT, 'runs'), result.bundle.tuneName, 'bundle.snapshot.json')}\n`)
+  process.exitCode = !result.stoppedByBudget && pass === result.results.length ? 0 : 1
+}
+
 function resolveTaskDir (task) {
   if (path.isAbsolute(task)) return task
   if (existsSync(task)) return path.resolve(task)
@@ -234,6 +262,7 @@ async function main () {
   const [cmd, opts] = parseArgs(process.argv.slice(2))
   if (cmd === 'help' || cmd === '--help' || cmd === '-h') usage(0)
   if (cmd === 'trial') return cmdTrial(opts)
+  if (cmd === 'baseline') return cmdBaseline(opts)
   if (cmd === 'run') return cmdRun(opts)
   if (cmd === 'triforce') return cmdTriforce()
   if (cmd !== 'diagnose') usageError(`unknown command: ${cmd}`)
