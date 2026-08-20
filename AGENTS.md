@@ -5,7 +5,8 @@ Factory Droid — measures **verified** engineering work per dollar and supports
 controlled tuning against that measurement. Built as a Factory Guild submission (factory.ai/ambassador).
 
 **Status: M4 shipped; M5 infrastructure done, paid baseline not run
-(2026-08-19).** `PLAN.md` is the source of truth; `docs/research-2026-08.md` is
+(2026-08-19); dt-v1-ledger-lite-nosub sweep run 2026-08-20 — NOT SUPPORTED.**
+`PLAN.md` is the source of truth; `docs/research-2026-08.md` is
 the verified evidence base. M4: 7 tasks authored (t001 toy; t002 core-swe; t003
 + t006 filesystem-torture [memex]; t004 + t007 terminal-native; t005
 harness-surface). `triforce` gates every full-layout task (49/49 legs); each
@@ -26,7 +27,9 @@ Results: `docs/m4-flake-check-2026-08.md`; aggregate any run with
 M5 adds versioned pricing (`lib/pricing.js`), an explicit-spend native baseline
 that freezes bundle provenance before execution (`configs/native-droid.json`),
 and a schema-validated preregistration under `claims/` (validated by
-`scripts/check-claim.js` in CI; preregistered, not yet run). Native Droid is accounted
+`scripts/check-claim.js` in CI; dt-v1 run 2026-08-20 — not supported, results
+`docs/dt-v1-ledger-lite-nosub-results-2026-08-20.md`; dt-v0 not yet run).
+Native Droid is accounted
 in observed Factory Standard Credits; do not infer a USD conversion. No paid
 baseline has been run. `baseline` must keep the `--confirm-spend` gate.
 
@@ -83,7 +86,10 @@ graded patch. Refuses to overwrite a task's own `AGENTS.md`
 (`t005-agents-md-compliance` grades against exactly that file). The pack's
 provenance records the tune name/path/bytes/sha256; untuned packs record
 `tune: null`. First tune: `tunes/ledger-lite` (~390 tokens), preregistered as
-`claims/dt-v1-ledger-lite-nosub.json` — **not run**.
+`claims/dt-v1-ledger-lite-nosub.json` — **run 2026-08-20, NOT SUPPORTED**
+(80/80 trials, 5.0pp NO_SUBMISSION drop vs 25pp required, Fisher p = 0.7695;
+analysis `scripts/claim-report.js`, results
+`docs/dt-v1-ledger-lite-nosub-results-2026-08-20.md`).
 
 `weather/` is a daily free-route observation series, written by the
 `route-weather` scheduled workflow (06:17 UTC, `OPENCODE_ZEN_KEY` secret,

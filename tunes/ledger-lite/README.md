@@ -30,8 +30,11 @@ That last line is the one this tune exists for. In this repo's M4 flake check,
 7 of 8 `t004-git-surgery` attempts scored `NO_SUBMISSION`: the models performed
 the git surgery correctly, checked the behavior, narrated success, and never
 ran `git commit`. The commit contract is aimed squarely at that failure.
-Whether it actually moves the rate is an open question, preregistered as
-`claims/dt-v1-ledger-lite-nosub.json` and not yet run.
+Whether it actually moves the rate was preregistered as
+`claims/dt-v1-ledger-lite-nosub.json` and measured 2026-08-20: **not
+supported** — a 5.0pp pooled NO_SUBMISSION reduction against the required
+25pp, Fisher exact p = 0.7695, VERIFIED_PASS floor intact. Full tables and
+provenance: `docs/dt-v1-ledger-lite-nosub-results-2026-08-20.md`.
 
 ## Cost
 

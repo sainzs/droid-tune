@@ -27,11 +27,14 @@ narration will overstate them.
 > is near-universal in this suite, not absolute.
 
 [`ledger-lite`](tunes/ledger-lite/) is the response: a tune whose explicit
-commit contract targets exactly this step. Its controlled comparison is
+commit contract targets exactly this step. Its controlled comparison was
 [preregistered](claims/dt-v1-ledger-lite-nosub.json) — 80 trials, a frozen
-decision rule, a pinned tune hash — and **has not been run**. This repo
-therefore claims nothing about whether the tune works. `droidtune sweep` is what
-will run it.
+decision rule, a pinned tune hash — and ran 2026-08-20: **not supported**. The
+tune moved the pooled NO_SUBMISSION rate 5.0pp against a required 25pp
+(Fisher exact p = 0.7695); the VERIFIED_PASS floor held
+([results](docs/dt-v1-ledger-lite-nosub-results-2026-08-20.md)). `droidtune
+sweep` ran the schedule; `scripts/claim-report.js` computed the decision from
+the packs without re-cutting.
 
 An open-source diagnostic, tuning, and verification toolkit for
 [Factory Droid](https://docs.factory.ai): evidence packs, isolated trials, and
@@ -366,9 +369,11 @@ must name `by: <command> including <edges>`, and an explicit *always commit
 completed work to git* contract aimed at the `NO_SUBMISSION` failure above.
 Distilled from the [J-Space Cognition Suite
 V3.6](https://github.com/Tiger3807861189/J-Space-Cognition-Suite-V3.6)
-(Apache-2.0). Whether it moves the rate is preregistered, not claimed:
+(Apache-2.0). Whether it moves the rate was preregistered, then measured:
 [`claims/dt-v1-ledger-lite-nosub.json`](claims/dt-v1-ledger-lite-nosub.json)
-has not been run.
+ran 2026-08-20 and is [not
+supported](docs/dt-v1-ledger-lite-nosub-results-2026-08-20.md) — 5.0pp against
+the required 25pp, Fisher p = 0.7695.
 
 ## Process audit
 

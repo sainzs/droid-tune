@@ -9,7 +9,7 @@
 |---|---|
 | Plan date | 2026-08-18 |
 | Landscape verified as of | 2026-08-18 (see `docs/research-2026-08.md`) |
-| Status | M5 infrastructure complete (2026-08-19); paid native baseline not run |
+| Status | M5 infrastructure complete (2026-08-19); paid native baseline not run; dt-v1-ledger-lite-nosub sweep run 2026-08-20 — not supported ([results](docs/dt-v1-ledger-lite-nosub-results-2026-08-20.md)) |
 | Primary goal | Factory Guild submission (factory.ai/ambassador) |
 | Stack | Zero runtime deps, Node ≥ 20, ESM (memex identity) |
 | Relationship | Unofficial community project. **Not affiliated with Factory.** |
