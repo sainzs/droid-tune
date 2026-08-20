@@ -59,6 +59,8 @@ jobs:
           fi
 
       - name: Commit the observation
+        env:
+          BRANCH: ${{ github.ref_name }}
         run: |
           if [ -z "$(git status --porcelain weather/)" ]; then
             echo "no change to weather/ — nothing to commit"
@@ -72,4 +74,24 @@ jobs:
           # files are validated against the series by test/route-weather.test.js
           # on the next real push, so they cannot drift unnoticed.
           git commit -m "weather: free-route status $(date -u +%Y-%m-%d) [skip ci]"
-          git push
+          # HEAD:$BRANCH rather than a bare `git push`, which fails outright if
+          # checkout left us detached.
+          if git push origin "HEAD:$BRANCH"; then
+            exit 0
+          fi
+          # Someone pushed between checkout and now. The series is append-only,
+          # so a rebase is normally clean; regenerate the report afterwards so
+          # it reflects the merged data rather than ours alone.
+          echo "push rejected — rebasing onto the current $BRANCH and retrying"
+          git fetch origin "$BRANCH"
+          if ! git rebase "origin/$BRANCH"; then
+            git rebase --abort || true
+            echo "::warning::could not rebase today's observation onto $BRANCH; skipping this push"
+            exit 0
+          fi
+          node scripts/route-weather.js --render
+          if [ -n "$(git status --porcelain weather/)" ]; then
+            git add weather/
+            git commit --amend --no-edit
+          fi
+          git push origin "HEAD:$BRANCH"
