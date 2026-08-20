@@ -244,7 +244,9 @@ node bin/droidtune.js audit runs/<tune>                    # per-trial table + t
 | `no-test-finish` | the session ran tool calls and never ran a single check command |
 
 Thresholds: `--window <n>`, `--stall-threshold <n>`. `--json` for the raw
-aggregation.
+aggregation. `scripts/results-table.js --audit` appends the same counts as a
+Markdown section under the results table; without the flag its output is
+unchanged, byte for byte, so the committed snapshot and CI guard still hold.
 
 Every detector prefers a false negative. Check-command recognition is
 deliberately generous (running a workspace file through an interpreter counts,

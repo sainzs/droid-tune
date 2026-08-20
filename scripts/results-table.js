@@ -9,12 +9,19 @@
 // eight PROVIDER_ERRORs is useless; one that separates "the route rate-limited
 // us" from "that model id isn't routable" is evidence.
 //
+// `--audit` appends a process-discipline section (lib/audit.js) below the
+// table. It is opt-in and OFF by default, deliberately: demo-pack/EXPECTED-
+// TABLE.md and the README block are byte-compared by scripts/check-demo-table.js,
+// so the default output of this script is a frozen artifact.
+//
 // Usage:
 //   node scripts/results-table.js --runs-dir runs/m4-flake3
 //   node scripts/results-table.js --runs-dir runs/m4-flake3 --tasks t002-slugify,t003-path-canonicalize
 //   node scripts/results-table.js --runs-dir runs/m5-byok-sweep --title "BYOK sweep"
+//   node scripts/results-table.js --runs-dir runs/m4-flake3 --audit
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
+import { CATEGORIES, auditPack } from '../lib/audit.js'
 
 const arg = (name, fallback = null) => {
   const i = process.argv.indexOf(name)
@@ -24,6 +31,9 @@ const arg = (name, fallback = null) => {
 const runsDir = arg('--runs-dir', 'runs/m4-flake3')
 const only = (arg('--tasks') ?? '').split(',').map(s => s.trim()).filter(Boolean)
 const title = arg('--title', runsDir)
+const withAudit = process.argv.includes('--audit')
+const auditWindow = Number(arg('--window')) || undefined
+const auditStall = Number(arg('--stall-threshold')) || undefined
 
 if (!existsSync(runsDir)) {
   console.error(`runs dir not found: ${runsDir}`)
@@ -91,7 +101,8 @@ for (const task of readdirSync(runsDir)) {
       attempt: att,
       outcome,
       durationMs: results.durationMs ?? null,
-      kind: NON_MODEL.has(outcome) ? providerErrorKind(dir, results) : null
+      kind: NON_MODEL.has(outcome) ? providerErrorKind(dir, results) : null,
+      audit: withAudit ? auditPack(dir, { coverageWindow: auditWindow, stallThreshold: auditStall }) : null
     })
   }
 }
@@ -135,4 +146,36 @@ if (unreached > 0) {
   for (const r of rows.filter(r => NON_MODEL.has(r.outcome))) byKind[r.kind] = (byKind[r.kind] ?? 0) + 1
   const detail = Object.entries(byKind).map(([k, n]) => `${n} ${k.replace(/_/g, '-')}`).join(', ')
   console.log(`\n${unreached} further trial(s) never reached the model (${detail}) and are excluded from the pass rate rather than counted as failures.`)
+}
+
+// --- optional process-audit section --------------------------------------
+// Everything below runs only under --audit, so the default output above stays
+// byte-identical to the committed snapshot.
+if (withAudit) {
+  const audited = rows.filter(r => r.audit?.auditable)
+  const missing = rows.length - audited.length
+  console.log(`\n### ${title} — process audit\n`)
+  if (audited.length === 0) {
+    console.log(`No pack under \`${runsDir}\` carries a \`transcript.jsonl\`, so there is nothing to audit. These trials are unaudited, not clean.`)
+  } else {
+    const flagged = audited.filter(r => r.audit.total > 0)
+    console.log(`| trial | outcome | ${CATEGORIES.join(' | ')} | total |`)
+    console.log(`| --- | --- | ${CATEGORIES.map(() => '---').join(' | ')} | --- |`)
+    for (const r of flagged) {
+      const cells = CATEGORIES.map(c => r.audit.counts[c])
+      console.log(`| \`${r.task}/${r.attempt}\` | ${r.outcome} | ${cells.join(' | ')} | ${r.audit.total} |`)
+    }
+    if (flagged.length === 0) {
+      console.log('| — | — | ' + CATEGORIES.map(() => '0').join(' | ') + ' | 0 |')
+    }
+    const totals = Object.fromEntries(CATEGORIES.map(c => [c, 0]))
+    for (const r of audited) for (const c of CATEGORIES) totals[c] += r.audit.counts[c]
+    const grand = Object.values(totals).reduce((a, b) => a + b, 0)
+    const detail = CATEGORIES.map(c => `${totals[c]} ${c}`).join(', ')
+    console.log(`\n**${grand} process violation(s)** across ${audited.length} auditable pack(s) — ${detail}.`)
+    console.log(`\nOnly trials with at least one finding are listed; the remaining ${audited.length - flagged.length} auditable pack(s) were clean.`)
+  }
+  if (missing > 0) {
+    console.log(`\n${missing} pack(s) carry no \`transcript.jsonl\` and are excluded from the audit rather than counted as clean.`)
+  }
 }
