@@ -298,6 +298,20 @@ runtime). 16 documented findings, 10 normative contract rules (C1–C10),
   tokens. Local pack:
   `runs/m2-live/t001-greet-script/attempt-1/` (gitignored, not published).
 
+### Pricing snapshot inputs (verified 2026-08-19)
+
+- DeepSeek's official V4 table is effective 2026-08-13. Peak windows are
+  01:00–04:00 and 06:00–10:00 UTC; all other hours are half-price. The frozen
+  table and source URL are encoded in `lib/pricing.js`; trials before its
+  effective timestamp are rejected.
+- OpenCode's official Zen page identifies free models at zero input/output
+  price. M5 freezes only the four routes observed in the M4 sweep; a `-free`
+  suffix alone is not accepted as proof of zero price.
+- Factory's analytics documentation defines `factoryCredits` as Factory
+  Standard Credits computed from raw tokens with cache discounts. No public
+  USD conversion is assumed, so native-Droid packs report credits and
+  `costUsd: null`.
+
 ## 7. Key source URLs
 
 - Guild: factory.ai/ambassador

@@ -11,11 +11,24 @@ data.
 > **Unofficial community project. Not affiliated with Factory.**
 > "Factory Droid" is referenced as the measured product, nominative use only.
 
-**Status: M2 complete** — `diagnose` (session telemetry, config health,
-faults/hints, BYOK probe) and `trial` (one task end-to-end through `droid
-exec` with a hash-manifested development evidence pack) are live. M3 adds the
-hardened verifier and tri-force validation; pricing and claim-eligible packs
-arrive at M5. See [`PLAN.md`](PLAN.md).
+**Status: M5 infrastructure complete** — diagnostics, isolated trials, the
+seven-task tri-force suite, versioned pricing, frozen native-Droid baseline
+bundles, and preregistered claims are live. The first paid native baseline has
+not been run; `baseline` requires explicit spend confirmation. See
+[`PLAN.md`](PLAN.md).
+
+## Results
+
+In this suite, on 2026-08-19, the original M4 flake check observed
+**29/40 `VERIFIED_PASS`** across five original tasks and four OpenCode Zen
+free routes, at **$0**. **t004-git-surgery** was the discriminative
+instrument: **7/8 `NO_SUBMISSION`** — agents did the technical work and
+omitted the required `git commit`. One `nemotron-3.5-lightning-free`
+attempt committed and passed. Full matrix, lineage notes, and limitations:
+[`docs/m4-flake-check-2026-08.md`](docs/m4-flake-check-2026-08.md).
+
+This is a harness result, not a model ranking and not a Droid
+cost-optimization claim. No paid native baseline has been run.
 
 ## Requirements
 
@@ -25,7 +38,7 @@ arrive at M5. See [`PLAN.md`](PLAN.md).
 ## Quickstart
 
 ```sh
-git clone <repo> && cd droid-tune
+git clone https://github.com/sainzs/droid-tune.git && cd droid-tune
 node bin/droidtune.js diagnose --demo   # zero-install: runs bundled fixtures
 npm run check                           # tests + CLI smoke
 ```
@@ -58,6 +71,8 @@ outcome · `2` usage error.
 | `diagnose --probe [model]` | Live round-trip through `droid exec` on a BYOK custom model; asserts the session lands with disjoint cache fields. Opt-in (spends your BYOK credits/points) |
 | `diagnose --demo` | Same pipeline against bundled fixtures — no Droid install needed |
 | `trial --task <dir>` | Runs one task end-to-end through `droid exec` (isolated temporary repo, frozen tests copied into a fresh grading copy only after the agent commits) and writes a hash-manifested development evidence pack |
+| `baseline --confirm-spend` | Freezes the committed `native-droid-v1` bundle, then runs its six live Droid Core tasks; refuses to start without the confirmation flag |
+| `triforce` | Runs oracle, no-op, and cheat controls for every full-layout task without calling Droid |
 
 Diagnose flags: `--probe [model]` · `--demo` · `--limit <n>` · `--json`.
 
@@ -67,6 +82,15 @@ Trial flags: `--task <dir>` · `--model <id-or-substring>` · `--tune <name>` ·
 
 Common overrides: `--sessions-dir <path>` · `--config <file>` ·
 `--droid-path <path>`.
+
+The native baseline intentionally records observed Factory Standard Credits,
+not a fabricated USD conversion. No live baseline was run as part of M5
+implementation. Its frozen guard is 100k output tokens per trial and 600k
+cumulative; a breach stops the remaining tasks. To spend credits deliberately:
+
+```sh
+node bin/droidtune.js baseline --confirm-spend
+```
 
 ### Findings
 
@@ -88,19 +112,21 @@ Hints (advisory, evidence-linked): `DT101` coding-endpoint tool-call risk ·
 - `trial` drives a task through `droid exec`, records the tagged Droid session,
   extracts the committed patch, grades it against tests the agent never saw,
   and freezes the artifacts under `runs/<tune>/<task>/attempt-N/`.
-- Later milestones add hardened CTRF verification, task-suite controls,
-  paired trials, pricing, and claim-registry enforcement (see `PLAN.md` §6–§8).
+- `baseline` freezes the bundle, task/verifier hashes, redacted-config hash,
+  Droid version, pricing table, and claim IDs before its first live trial.
 
 ## Evidence packs
 
-M2 packs include provenance, instruction, redacted config snapshot, event
+Evidence packs include provenance, instruction, redacted config snapshot, event
 ledger, transcript when Droid emitted one, committed patch, frozen tests,
 results, usage, errors when present, and a SHA-256 manifest. Local development
 packs under `runs/` are gitignored.
 
-These M2 packs are **not public-claim evidence**: pricing is not implemented
-until M5, and M3 still needs to harden verification and add tri-force controls.
-No transcript, verifier provenance, or pricing snapshot means no claim.
+M5 can add a versioned `pricing.json`: exact USD token cost for supported
+DeepSeek V4 tables, exact zero for the frozen Zen-free table, or observed
+Factory Standard Credits for native Droid. Unknown routes and stale tables fail
+closed. Development packs remain ineligible when any required artifact is
+absent. No transcript, verifier provenance, or pricing snapshot means no claim.
 
 ## BYOK recipe (`${ENV_VAR}` keys, never plaintext)
 

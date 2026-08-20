@@ -9,7 +9,7 @@
 |---|---|
 | Plan date | 2026-08-18 |
 | Landscape verified as of | 2026-08-18 (see `docs/research-2026-08.md`) |
-| Status | M3 complete (2026-08-18): verify.js hardening + tri-force CI; M4 task authoring next |
+| Status | M5 infrastructure complete (2026-08-19); paid native baseline not run |
 | Primary goal | Factory Guild submission (factory.ai/ambassador) |
 | Stack | Zero runtime deps, Node ≥ 20, ESM (memex identity) |
 | Relationship | Unofficial community project. **Not affiliated with Factory.** |
@@ -347,8 +347,8 @@ hidden) → paired per-task deltas → Wilson-CI'd yields → Pareto frontier
 | M1 | 1–2 | Scaffold; `sessions.js` reader; `diagnose` MVP (version stamp, config snapshot, session tokenUsage dump, obvious-fault detection); BYOK `--probe` round-trip; harness hints; `--demo` fixtures; README stub + LICENSE ✅ 2026-08-18 |
 | M2 | 3–4 | `runner.js` + `ledger.js` + evidence packs; one toy task end-to-end through `droid exec` ✅ 2026-08-18 (t001 VERIFIED_PASS, Zen free route, $0) |
 | M3 | 5–6 | `verify.js` (isolation invariant, git hygiene, CTRF/reward); tri-force CI ✅ 2026-08-18 (62 tests, 7/7 triforce legs green) |
-| M4 | 7–8 | Author 6–8 tasks; 3× flake check — **tasks done**: 7 authored 2026-08-19 (t001 toy; t002 core-swe; t003 + t006 filesystem-torture [memex]; t004 + t007 terminal-native; t005 harness-surface), all verifiers discriminate. Triforce generalized (49/49 legs). Hardening shipped: S1 isolation (tests//solution/ patches disqualified), S2/S3 PROVIDER_ERROR envelope gating (+ unit tests), env-allowlist for droid exec (stop env-name leak into packs). **Live flake check done 2026-08-19**: 38 trials on 4 Zen free routes ($0), 71% PASS — t004-git-surgery is the discriminative instrument (7/8 NO_SUBMISSION: models do the work, forget `git commit`); t003 separates small models by timeout; t002/t005/t007 stable. See `docs/m4-flake-check-2026-08.md` |
-| M5 | 9–10 | `pricing.js`; baseline runs for `native-droid`; freeze first claim entries |
+| M4 | 7–8 | Author 6–8 tasks; 3× flake check — **tasks done**: 7 authored 2026-08-19 (t001 toy; t002 core-swe; t003 + t006 filesystem-torture [memex]; t004 + t007 terminal-native; t005 harness-surface), all verifiers discriminate. Triforce generalized (49/49 legs). Hardening shipped: S1 isolation (tests//solution/ patches disqualified), S2/S3 PROVIDER_ERROR envelope gating (+ unit tests), env-allowlist for droid exec (stop env-name leak into packs). **Live flake check done 2026-08-19**: 40 trials on 4 Zen free routes ($0), 73% PASS — t004-git-surgery is the discriminative instrument (7/8 NO_SUBMISSION: models do the work, forget `git commit`); t003 separates small models by timeout; t002/t005/t007 stable. See `docs/m4-flake-check-2026-08.md` |
+| M5 | 9–10 | `pricing.js`; baseline runs for `native-droid`; freeze first claim entries — **infrastructure done 2026-08-19**: pricing fails closed on stale/unknown routes, native bundle + preregistered claim frozen, explicit-spend baseline CLI added. Paid native baseline remains unrun. |
 | M6 | 11–12 | Tune arms (`cache-stable-droid` + BYOK models); pilot n=3 |
 | M7 | 13 | Confirmatory paired runs n=5 (finalists only) |
 | M8 | 14 | Tune sheet + claims report + 60-second demo + README/disclaimer → publish → Guild submission |
