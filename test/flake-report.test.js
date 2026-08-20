@@ -4,11 +4,16 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { cp, mkdtemp, rm } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import os from 'node:os'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const script = path.join(root, 'scripts', 'flake-report.js')
+// The full m4-flake3 evidence set is local-only (runs/ is gitignored); these
+// tests assert its published totals and skip where the data is absent (CI).
+// demo-pack coverage of the same script lives in test/demo-table.test.js.
 const source = path.join(root, 'runs', 'm4-flake3')
+const test_ = existsSync(source) ? test : test.skip
 
 function run (args) {
   try {
@@ -27,7 +32,7 @@ async function tmpRuns () {
   return dir
 }
 
-test('no filter aggregates all tasks and reports 35/48', async () => {
+test_('no filter aggregates all tasks and reports 35/48', async () => {
   const base = await tmpRuns()
   try {
     const r = run(['--runs-dir', path.join(base, 'm4-flake3')])
@@ -41,7 +46,7 @@ test('no filter aggregates all tasks and reports 35/48', async () => {
   }
 })
 
-test('--task repeated selects subset and reports 29/40', async () => {
+test_('--task repeated selects subset and reports 29/40', async () => {
   const base = await tmpRuns()
   try {
     const r = run(['--runs-dir', path.join(base, 'm4-flake3'), ...FIVE.flatMap(t => ['--task', t])])
@@ -54,7 +59,7 @@ test('--task repeated selects subset and reports 29/40', async () => {
   }
 })
 
-test('--tasks comma form matches repeated --task', async () => {
+test_('--tasks comma form matches repeated --task', async () => {
   const base = await tmpRuns()
   try {
     const r = run(['--runs-dir', path.join(base, 'm4-flake3'), '--tasks', FIVE.join(',')])
@@ -65,7 +70,7 @@ test('--tasks comma form matches repeated --task', async () => {
   }
 })
 
-test('missing --task id errors loudly with exit 2', async () => {
+test_('missing --task id errors loudly with exit 2', async () => {
   const base = await tmpRuns()
   try {
     const r = run(['--runs-dir', path.join(base, 'm4-flake3'), '--task', 't999-nope'])
@@ -77,7 +82,7 @@ test('missing --task id errors loudly with exit 2', async () => {
   }
 })
 
-test('--json emits aggregated data and reflects filtering', async () => {
+test_('--json emits aggregated data and reflects filtering', async () => {
   const base = await tmpRuns()
   try {
     const r = run(['--runs-dir', path.join(base, 'm4-flake3'), '--task', 't002-slugify', '--json'])
