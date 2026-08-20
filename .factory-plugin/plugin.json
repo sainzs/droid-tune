@@ -1,0 +1,18 @@
+{
+  "name": "droid-tune",
+  "description": "Droid Tune-Up — diagnose, tune, and verify Factory Droid configurations for the most verified engineering work per dollar. Ships the droidtune CLI as thin slash commands.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Santiago Sainz"
+  },
+  "homepage": "https://github.com/sainzs/droid-tune",
+  "repository": "https://github.com/sainzs/droid-tune",
+  "license": "MIT",
+  "keywords": [
+    "factory-droid",
+    "tuning",
+    "verification",
+    "diagnostics",
+    "benchmark"
+  ]
+}

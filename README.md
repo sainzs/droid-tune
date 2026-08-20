@@ -57,6 +57,14 @@ limiting, `401 ... is not supported`, a local config gap, or a timeout — all
 of which `droid exec` reports as the same `PROVIDER_ERROR`. See
 [`docs/free-route-routability-2026-08-19.md`](docs/free-route-routability-2026-08-19.md).
 
+## Install as a Droid plugin
+
+```sh
+droid plugin marketplace add https://github.com/sainzs/droid-tune && droid plugin install droid-tune --scope user
+```
+
+This exposes `/tune-diagnose`, `/tune-trial`, and `/tune-report`, which wrap the CLI in this repo — no logic duplication.
+
 ## Requirements
 
 - Node ≥ 20 (zero runtime dependencies)

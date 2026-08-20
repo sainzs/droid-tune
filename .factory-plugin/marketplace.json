@@ -1,0 +1,14 @@
+{
+  "name": "droid-tune",
+  "description": "Community marketplace for Droid Tune-Up — a diagnostic, tuning, and verification toolkit for Factory Droid (more verified work, fewer wasted tokens).",
+  "owner": {
+    "name": "Santiago Sainz"
+  },
+  "plugins": [
+    {
+      "name": "droid-tune",
+      "description": "Exposes the droidtune CLI as slash commands: /tune-diagnose, /tune-trial, /tune-report.",
+      "source": "./"
+    }
+  ]
+}
