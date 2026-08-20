@@ -27,8 +27,35 @@ omitted the required `git commit`. One `nemotron-3.5-lightning-free`
 attempt committed and passed. Full matrix, lineage notes, and limitations:
 [`docs/m4-flake-check-2026-08.md`](docs/m4-flake-check-2026-08.md).
 
+| task | hy3-free | laguna-s-2-1-free | nemotron-3-5-lightning-free | nemotron-3-ultra-free |
+| --- | --- | --- | --- | --- |
+| `t002-slugify` | PASS, PASS | PASS, PASS | PASS, PASS | PASS, PASS |
+| `t003-path-canonicalize` | PASS, timeout, PASS | timeout | PASS, timeout | PASS, PASS |
+| `t004-git-surgery` | no-sub, no-sub | no-sub, no-sub | PASS, no-sub | no-sub, no-sub |
+| `t005-agents-md-compliance` | PASS, PASS | PASS, PASS | PASS, PASS | PASS, PASS |
+| `t007-rename-symbol` | unknown, PASS | PASS, PASS | PASS, PASS | PASS, PASS |
+
+Regenerate either view from the evidence packs — no numbers are hand-written:
+
+```sh
+node scripts/flake-report.js  --runs-dir runs/m4-flake3 \
+  --tasks t002-slugify,t003-path-canonicalize,t004-git-surgery,t005-agents-md-compliance,t007-rename-symbol
+node scripts/results-table.js --runs-dir runs/m4-flake3 --tasks <same list>
+```
+
+Counting note: of those 40 trials, 39 actually reached the model (one never
+did). Scored over trials that reached the model, the rate is **29/39 (74%)**.
+`results-table.js` reports the stricter denominator; the 29/40 figure counts
+every attempted trial.
+
 This is a harness result, not a model ranking and not a Droid
 cost-optimization claim. No paid native baseline has been run.
+
+**Not every advertised free route works.** A serial probe of all 10 configured
+free routes on 2026-08-19 found only 4 usable; the rest failed with 429 rate
+limiting, `401 ... is not supported`, a local config gap, or a timeout — all
+of which `droid exec` reports as the same `PROVIDER_ERROR`. See
+[`docs/free-route-routability-2026-08-19.md`](docs/free-route-routability-2026-08-19.md).
 
 ## Requirements
 
@@ -56,7 +83,7 @@ Run the included toy task through a configured BYOK model:
 source ~/.factory/env.sh
 node bin/droidtune.js trial \
   --task tasks/t001-greet-script \
-  --model deepseek-v4-flash-free \
+  --model hy3-free \
   --tune m2-smoke
 ```
 
