@@ -99,6 +99,26 @@ test('trial without --task exits 2 before any model/spend concern', () => {
   assert.match(r.stderr, /requires --task/)
 })
 
+test('trial with a non-working --droid-path fails fast with the DT001 fault code (unified resolveDroid)', () => {
+  const r = run([
+    'trial', '--task', 'tasks/t001-greet-script', '--model', 'hy3-free',
+    '--droid-path', path.join(root, 'does-not-exist-droid')
+  ])
+  assert.equal(r.code, 1)
+  assert.match(r.stderr, /droid CLI not found/)
+  assert.match(r.stderr, /DT001/)
+})
+
+test('baseline with a non-working --droid-path fails fast with the DT001 fault code (unified resolveDroid)', () => {
+  const r = run([
+    'baseline', '--confirm-spend',
+    '--droid-path', path.join(root, 'does-not-exist-droid')
+  ])
+  assert.equal(r.code, 1)
+  assert.match(r.stderr, /droid CLI not found/)
+  assert.match(r.stderr, /DT001/)
+})
+
 test('runTriforce: all-expected verdicts → ok:true with 7 passing legs', () => {
   const verdicts = {
     oracle: 'VERIFIED_PASS',

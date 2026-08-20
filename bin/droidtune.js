@@ -8,6 +8,7 @@ import { renderDiagnose } from '../lib/report.js'
 import { runTrial } from '../lib/runner.js'
 import { makeRunOne, runTriforce } from '../lib/triforce.js'
 import { runBaseline } from '../lib/baseline.js'
+import { resolveDroid } from '../lib/droid-path.js'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -127,6 +128,22 @@ function parseArgs (argv) {
   return [cmd, opts]
 }
 
+// Shared with `diagnose` (lib/droid-path.js): explicit --droid-path >
+// DROID_PATH env > ~/.local/bin/droid > PATH, each candidate verified with
+// `--version`. Previously `trial`/`baseline` hardcoded ~/.local/bin/droid
+// directly and would fail on any machine where `diagnose` had already found a
+// working droid somewhere else (DROID_PATH or PATH).
+function resolveDroidOrDie (opts) {
+  const droid = resolveDroid(opts.droidPath)
+  if (!droid) {
+    throw new Error(
+      `droid CLI not found or not executable (tried: ${opts.droidPath ?? 'DROID_PATH, ~/.local/bin/droid, PATH'}). ` +
+      `Run 'droidtune diagnose' for details (DT001).`
+    )
+  }
+  return droid.path
+}
+
 function defaultTrialPaths (opts) {
   return {
     configPath: opts.configPath ?? path.join(os.homedir(), '.factory', 'settings.json'),
@@ -162,7 +179,7 @@ async function cmdTrial (opts) {
   const result = await runTrial({
     taskDir: opts.task,
     model,
-    droidPath: opts.droidPath ?? path.join(os.homedir(), '.local', 'bin', 'droid'),
+    droidPath: resolveDroidOrDie(opts),
     sessionsDir: paths.sessionsDir,
     configPath: paths.configPath,
     runsDir: opts.runsDir,
@@ -196,7 +213,7 @@ async function cmdBaseline (opts) {
     repoRoot: REPO_ROOT,
     configPath: paths.configPath,
     sessionsDir: paths.sessionsDir,
-    droidPath: opts.droidPath ?? path.join(os.homedir(), '.local', 'bin', 'droid'),
+    droidPath: resolveDroidOrDie(opts),
     runsDir: path.resolve(opts.runsDir ?? path.join(REPO_ROOT, 'runs')),
     confirmSpend: true
   })
