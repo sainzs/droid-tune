@@ -1,0 +1,11 @@
+{"type":"session_start","id":"fixture-rederive","title":"planted: same file edited twice with no check between"}
+{"type":"message","id":"m1","timestamp":"2026-08-20T10:00:00.000Z","message":{"role":"user","content":[{"type":"text","text":"Rename compute to add across the package."}]}}
+{"type":"message","id":"m2","timestamp":"2026-08-20T10:00:01.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Execute","input":{"command":"cd /w && python3 -m pytest -q","summary":"Baseline suite"}}]}}
+{"type":"message","id":"m3","timestamp":"2026-08-20T10:00:02.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"1 failed"}]}}
+{"type":"message","id":"m4","timestamp":"2026-08-20T10:00:03.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Edit","input":{"file_path":"/w/calc/core.py","old_str":"def compute","new_str":"def add"}}]}}
+{"type":"message","id":"m5","timestamp":"2026-08-20T10:00:04.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"edited"}]}}
+{"type":"message","id":"m6","timestamp":"2026-08-20T10:00:05.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t3","name":"Grep","input":{"pattern":"compute","path":"/w"}}]}}
+{"type":"message","id":"m7","timestamp":"2026-08-20T10:00:06.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t3","content":"/w/calc/core.py:9"}]}}
+{"type":"message","id":"m8","timestamp":"2026-08-20T10:00:07.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t4","name":"Edit","input":{"file_path":"/w/calc/core.py","old_str":"compute(","new_str":"add("}}]}}
+{"type":"message","id":"m9","timestamp":"2026-08-20T10:00:08.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t4","content":"edited"}]}}
+{"type":"message","id":"m10","timestamp":"2026-08-20T10:00:09.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Let me re-run the suite before I say anything about this."}]}}

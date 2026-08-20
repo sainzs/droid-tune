@@ -1,0 +1,11 @@
+{"type":"session_start","id":"fixture-stall","title":"planted: identical command re-run"}
+{"type":"message","id":"m1","timestamp":"2026-08-20T10:00:00.000Z","message":{"role":"user","content":[{"type":"text","text":"Recover main with git surgery."}]}}
+{"type":"message","id":"m2","timestamp":"2026-08-20T10:00:01.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Execute","input":{"command":"cd /w && sh tests/test.sh","summary":"Baseline"}}]}}
+{"type":"message","id":"m3","timestamp":"2026-08-20T10:00:02.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"1 failed"}]}}
+{"type":"message","id":"m4","timestamp":"2026-08-20T10:00:03.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Execute","input":{"command":"cd /w && git rebase -i HEAD~2","summary":"Rebase"}}]}}
+{"type":"message","id":"m5","timestamp":"2026-08-20T10:00:04.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"error: there was a problem with the editor"}]}}
+{"type":"message","id":"m6","timestamp":"2026-08-20T10:00:05.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Let me try that again."},{"type":"tool_use","id":"t3","name":"Execute","input":{"command":"cd /w && git rebase -i HEAD~2","summary":"Rebase"}}]}}
+{"type":"message","id":"m7","timestamp":"2026-08-20T10:00:06.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t3","content":"error: there was a problem with the editor"}]}}
+{"type":"message","id":"m8","timestamp":"2026-08-20T10:00:07.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Let me try once more."},{"type":"tool_use","id":"t4","name":"Execute","input":{"command":"cd /w && git rebase -i HEAD~2","summary":"Rebase"}}]}}
+{"type":"message","id":"m9","timestamp":"2026-08-20T10:00:08.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t4","content":"error: there was a problem with the editor"}]}}
+{"type":"message","id":"m10","timestamp":"2026-08-20T10:00:09.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Let me stop and reconsider the approach before going further."}]}}

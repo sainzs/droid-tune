@@ -1,0 +1,6 @@
+{"type":"session_start","id":"fixture-malformed","title":"control: truncated/garbage lines are counted, never guessed at"}
+{"type":"message","id":"m1","timestamp":"2026-08-20T10:00:00.000Z","message":{"role":"user","content":[{"type":"text","text":"Do the thing."}]}}
+{"type":"message","id":"m2","timestamp":"2026-08-20T10
+not json at all
+{"type":"message","id":"m3","timestamp":"2026-08-20T10:00:02.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Execute","input":{"command":"cd /w && sh tests/test.sh","summary":"Suite"}}]}}
+{"type":"message","id":"m4","timestamp":"2026-08-20T10:00:03.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}

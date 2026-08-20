@@ -1,0 +1,7 @@
+{"type":"session_start","id":"fixture-adjacent","title":"control: one multi-hunk change, not a re-derivation loop"}
+{"type":"message","id":"m1","timestamp":"2026-08-20T10:00:00.000Z","message":{"role":"user","content":[{"type":"text","text":"Rename compute to add."}]}}
+{"type":"message","id":"m2","timestamp":"2026-08-20T10:00:01.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t1","name":"Execute","input":{"command":"cd /w && python3 -m pytest -q","summary":"Baseline"}}]}}
+{"type":"message","id":"m3","timestamp":"2026-08-20T10:00:02.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"1 failed"}]}}
+{"type":"message","id":"m4","timestamp":"2026-08-20T10:00:03.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Edit","input":{"file_path":"/w/calc/core.py","old_str":"def compute","new_str":"def add"}},{"type":"tool_use","id":"t3","name":"Edit","input":{"file_path":"/w/calc/core.py","old_str":"compute(","new_str":"add("}}]}}
+{"type":"message","id":"m5","timestamp":"2026-08-20T10:00:04.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"edited"},{"type":"tool_result","tool_use_id":"t3","content":"edited"}]}}
+{"type":"message","id":"m6","timestamp":"2026-08-20T10:00:05.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Let me re-run the suite now."}]}}

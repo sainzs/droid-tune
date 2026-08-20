@@ -1,0 +1,7 @@
+{"type":"session_start","id":"fixture-notest","title":"planted: session ends without running any check"}
+{"type":"message","id":"m1","timestamp":"2026-08-20T10:00:00.000Z","message":{"role":"user","content":[{"type":"text","text":"Add safelist.mjs and commit it."}]}}
+{"type":"message","id":"m2","timestamp":"2026-08-20T10:00:01.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Let me write the module."},{"type":"tool_use","id":"t1","name":"Create","input":{"file_path":"/w/safelist.mjs","content":"export const safeListdir = (n) => n\n"}}]}}
+{"type":"message","id":"m3","timestamp":"2026-08-20T10:00:02.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"created"}]}}
+{"type":"message","id":"m4","timestamp":"2026-08-20T10:00:03.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Execute","input":{"command":"cd /w && git add -A && git commit -m 'feat: add safelist'","summary":"Commit"}}]}}
+{"type":"message","id":"m5","timestamp":"2026-08-20T10:00:04.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":"[main 9f8e7d6] feat: add safelist"}]}}
+{"type":"message","id":"m6","timestamp":"2026-08-20T10:00:05.000Z","message":{"role":"assistant","content":[{"type":"text","text":"I have committed the module as requested; if you would like coverage I can add a suite next."}]}}
