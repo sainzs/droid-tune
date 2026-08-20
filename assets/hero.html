@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>droid-tune — verification console</title>
+  <style>
+    :root {
+      --bg: #080b0e;
+      --panel: #0d1115;
+      --bar: #141a1f;
+      --border: #263139;
+      --ink: #f0f5f2;
+      --muted: #8b989b;
+      --faint: #5a686d;
+      --green: #62f6bc;
+      --green-dim: #2cb782;
+      --amber: #f3c66b;
+      --red: #ff8c83;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    body {
+      color: var(--ink);
+      padding: 38px 44px 36px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", monospace;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+      background:
+        radial-gradient(ellipse at 75% 10%, rgba(56, 117, 100, .11), transparent 42%),
+        linear-gradient(135deg, rgba(255,255,255,.018) 1px, transparent 1px),
+        var(--bg);
+      background-size: auto, 28px 28px, auto;
+    }
+
+    .wrap {
+      width: 912px;
+      margin: 0 auto;
+    }
+
+    .brand {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 3px;
+    }
+
+    .brand-left {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .mark {
+      width: 25px;
+      height: 25px;
+      display: grid;
+      align-content: center;
+      gap: 3px;
+      padding: 5px 4px;
+      border: 1px solid rgba(98, 246, 188, .38);
+      border-radius: 7px;
+      background: rgba(98, 246, 188, .07);
+    }
+
+    .mark i {
+      display: block;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--green);
+    }
+
+    .mark i:nth-child(2) { width: 75%; opacity: .76; }
+    .mark i:nth-child(3) { width: 48%; opacity: .48; }
+
+    .name {
+      font-size: 22px;
+      font-weight: 760;
+      letter-spacing: -.7px;
+    }
+
+    .tagline {
+      margin-left: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .15px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--faint);
+      font-size: 10px;
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 13px rgba(98, 246, 188, .78);
+    }
+
+    .terminal {
+      width: 912px;
+      height: 506px;
+      margin-top: 18px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--panel);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .48), 0 0 0 1px rgba(255,255,255,.018);
+    }
+
+    .terminal-bar {
+      height: 47px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 17px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bar);
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+
+    .dot.red { background: #ff625b; }
+    .dot.yellow { background: #f6c653; }
+    .dot.green { background: #3bd47b; }
+
+    .terminal-title {
+      margin-left: 10px;
+      color: var(--faint);
+      font-size: 11px;
+      letter-spacing: .1px;
+    }
+
+    .terminal-stage {
+      margin-left: auto;
+      color: var(--green-dim);
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .terminal-body {
+      height: 458px;
+      overflow: hidden;
+      padding: 24px 25px 22px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      transition: opacity 90ms linear, transform 90ms ease-out;
+    }
+
+    .line {
+      min-height: 21px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .command {
+      color: var(--ink);
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .prompt { color: var(--green); font-weight: 700; }
+    .command-text { color: var(--ink); }
+    .section { color: var(--ink); font-weight: 650; }
+    .muted { color: var(--muted); }
+    .fault { color: var(--amber); }
+    .verdict { margin-top: 7px; color: var(--green); font-weight: 650; }
+    .pass { color: var(--green); font-weight: 700; }
+    .matrix { margin-top: 8px; font-size: 12.1px; line-height: 1.58; letter-spacing: -.15px; white-space: pre; }
+    .matrix .pass { color: var(--green); }
+    .matrix .timeout { color: var(--amber); }
+    .matrix .nosub { color: var(--red); }
+    .matrix .code { color: var(--ink); }
+    .spacer { height: 12px; }
+
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 17px;
+      margin-left: 2px;
+      vertical-align: -3px;
+      border-radius: 1px;
+      background: var(--green);
+    }
+
+    .cursor.off { opacity: .2; }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      padding: 14px 4px 0;
+      color: var(--faint);
+      font-size: 10px;
+      letter-spacing: .2px;
+    }
+
+    .footer strong { color: var(--muted); font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">
+      <div class="brand-left">
+        <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span class="name">droid-tune</span>
+        <span class="tagline">diagnose / tune / verify</span>
+      </div>
+      <div class="status"><span class="status-dot"></span>evidence-first workflow</div>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+        <span class="terminal-title">droid-tune — verification console</span>
+        <span class="terminal-stage" id="stage">diagnose</span>
+      </div>
+      <div class="terminal-body" id="body"></div>
+    </div>
+
+    <div class="footer">
+      <span><strong>mechanical checks</strong> · reproducible evidence</span>
+      <span>unofficial · not affiliated with Factory</span>
+    </div>
+  </div>
+
+  <script>
+    const FPS = 12;
+    const LOOP_MS = 13_200;
+    const TYPE_MS = 27;
+    const COMMAND_PAUSE_MS = 260;
+    const LINE_MS = 155;
+    const body = document.getElementById('body');
+    const stage = document.getElementById('stage');
+
+    // The copy below is taken from this repository's CLI/help and README
+    // matrix. The frame query parameter makes each screenshot deterministic.
+    const SCENES = [
+      {
+        name: 'diagnose',
+        label: 'diagnose',
+        start: 0,
+        end: 4_350,
+        command: 'droidtune diagnose --demo',
+        lines: [
+          ['section', 'DROID TUNE-UP — DIAGNOSE (fixture demo)'],
+          ['section', 'CONFIG'],
+          ['muted', '  default model   inkling (effort high)'],
+          ['muted', '  custom models   2'],
+          ['section', 'SESSIONS — 7 total (/fixtures/sessions)'],
+          ['muted', '  route classes   core 3 · byok 1 · unknown 0'],
+          ['muted', '  cache read share (weighted)  95.1%'],
+          ['fault', '  FAULT DT002  plaintext API key in customModels entry "GLM-4.7 [Coding endpoint]" — use the ${ENV_VAR} form'],
+          ['verdict', 'verdict: 5 fault(s) · 4 hint(s) — fix faults before baselining']
+        ]
+      },
+      {
+        name: 'trial',
+        label: 'trial',
+        start: 4_350,
+        end: 8_150,
+        command: 'droidtune trial --task t001-greet-script --model deepseek-v4-flash-free',
+        lines: [
+          ['section', 'TRIAL ad-hoc/t001-greet-script/attempt-1'],
+          ['result', '  outcome    VERIFIED_PASS (reward 1)'],
+          ['muted', '  duration   18250ms'],
+          ['muted', '  usage      route byok']
+        ]
+      },
+      {
+        name: 'results matrix',
+        label: 'results matrix',
+        start: 8_150,
+        end: LOOP_MS,
+        command: 'node scripts/results-table.js --runs-dir runs/m4-flake3',
+        lines: [
+          ['section', '### runs/m4-flake3'],
+          ['matrix', '| task | hy3-free | laguna-s-2-1-free | nemotron-3-5-lightning-free | nemotron-3-ultra-free |'],
+          ['matrix', '| --- | --- | --- | --- | --- |'],
+          ['matrix', '| `t002-slugify` | PASS, PASS | PASS, PASS | PASS, PASS | PASS, PASS |'],
+          ['matrix', '| `t003-path-canonicalize` | PASS, timeout, PASS | timeout | PASS, timeout | PASS, PASS |'],
+          ['matrix', '| `t004-git-surgery` | no-sub, no-sub | no-sub, no-sub | PASS, no-sub | no-sub, no-sub |']
+        ]
+      }
+    ];
+
+    const escapeHtml = (value) => String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    function cursorMarkup(ms) {
+      return '<span class="cursor' + (Math.floor(ms / 420) % 2 ? ' off' : '') + '"></span>';
+    }
+
+    function matrixMarkup(value) {
+      let html = escapeHtml(value);
+      html = html.replace(/PASS/g, '<span class="pass">PASS</span>');
+      html = html.replace(/timeout/g, '<span class="timeout">timeout</span>');
+      html = html.replace(/no-sub/g, '<span class="nosub">no-sub</span>');
+      html = html.replace(/(`[^`]+`)/g, '<span class="code">$1</span>');
+      return html;
+    }
+
+    function lineMarkup(kind, value) {
+      if (kind === 'matrix') return '<div class="line matrix">' + matrixMarkup(value) + '</div>';
+      if (kind === 'result') {
+        return '<div class="line muted">' + escapeHtml(value).replace('VERIFIED_PASS', '<span class="pass">VERIFIED_PASS</span>') + '</div>';
+      }
+      return '<div class="line ' + kind + '">' + escapeHtml(value) + '</div>';
+    }
+
+    function renderAt(ms) {
+      const time = ((ms % LOOP_MS) + LOOP_MS) % LOOP_MS;
+      const scene = SCENES.find((candidate) => time >= candidate.start && time < candidate.end) || SCENES[0];
+      const local = time - scene.start;
+      const commandLength = scene.command.length;
+      const commandDone = commandLength * TYPE_MS + COMMAND_PAUSE_MS;
+      const firstLineAt = commandDone + 160;
+      const transition = Math.min(1, Math.max(0, local / 180));
+
+      stage.textContent = scene.label;
+      body.style.opacity = String(transition);
+      body.style.transform = 'translateY(' + ((1 - transition) * 7) + 'px)';
+
+      const typedCount = Math.min(commandLength, Math.floor(Math.max(0, local) / TYPE_MS));
+      const typed = scene.command.slice(0, typedCount);
+      const commandCursor = typedCount < commandLength || local < commandDone;
+      let html = '<div class="command"><span class="prompt">$</span> <span class="command-text">' + escapeHtml(typed) + '</span>';
+      if (commandCursor) html += cursorMarkup(local);
+      html += '</div>';
+
+      if (local >= commandDone) {
+        html += '<div class="spacer"></div>';
+        scene.lines.forEach(([kind, value], index) => {
+          const lineAt = firstLineAt + index * LINE_MS;
+          if (local < lineAt) return;
+          const reveal = Math.min(1, (local - lineAt) / 90);
+          html += '<div style="opacity:' + reveal.toFixed(2) + '">' + lineMarkup(kind, value) + '</div>';
+        });
+
+        const lastLineAt = firstLineAt + (scene.lines.length - 1) * LINE_MS;
+        if (local > lastLineAt + 250) {
+          html += '<div class="line"><span class="prompt">$</span> ' + cursorMarkup(local) + '</div>';
+        }
+      }
+
+      body.innerHTML = html;
+    }
+
+    const requestedFrame = Number(new URLSearchParams(location.search).get('frame'));
+    if (Number.isFinite(requestedFrame)) {
+      renderAt((requestedFrame / FPS) * 1000);
+    } else {
+      const began = performance.now();
+      const tick = (now) => {
+        renderAt(now - began);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+  </script>
+</body>
+</html>

@@ -1,5 +1,7 @@
 # Droid Tune-Up
 
+<img src="assets/hero.gif" alt="droid-tune animated terminal capture" width="800" />
+
 **Diagnose. Tune. Verify. — More verified work. Fewer wasted tokens.**
 
 An open-source diagnostic, tuning, and verification toolkit for
