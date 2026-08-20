@@ -45,6 +45,11 @@ if (!existsSync(runsDir)) {
 // separable from genuine model outcomes so they can never be laundered into a
 // quality signal.
 const NON_MODEL = new Set(['PROVIDER_ERROR', 'DROID_ERROR', 'VERIFIER_ERROR', 'HARNESS_ERROR'])
+// Reached the model, but is not a valid observation of the arm under test: the
+// agent committed the tune into the graded history, so the trial cannot be
+// compared against an untuned arm. Excluded from the pass rate and reported
+// separately — never silently folded into "never reached the model".
+const INVALID_OBSERVATION = new Set(['TUNE_CONTAMINATED'])
 
 // Recover the underlying provider condition. Prefer a structured field if the
 // runner recorded one; otherwise fall back to the transcript's BYOK error text.
@@ -116,9 +121,12 @@ const tasks = [...new Set(rows.map(r => r.task))].sort()
 const models = [...new Set(rows.map(r => r.model))].sort()
 
 // Only trials that actually reached the model count toward a pass rate.
-const scored = rows.filter(r => !NON_MODEL.has(r.outcome))
+const scored = rows.filter(r => !NON_MODEL.has(r.outcome) && !INVALID_OBSERVATION.has(r.outcome))
 const passes = scored.filter(r => r.outcome === 'VERIFIED_PASS').length
-const unreached = rows.length - scored.length
+// Count the non-model rows directly: deriving this by subtraction would sweep
+// TUNE_CONTAMINATED trials — which DID reach the model — into the "never
+// reached the model" line and misdescribe them.
+const unreached = rows.filter(r => NON_MODEL.has(r.outcome)).length
 
 const CELL = { VERIFIED_PASS: 'PASS', VERIFIED_FAIL: 'fail', NO_SUBMISSION: 'no-sub', TIMEOUT: 'timeout' }
 const cell = (r) => r.kind ? r.kind.replace(/_/g, '-') : (CELL[r.outcome] ?? r.outcome.toLowerCase())
@@ -140,6 +148,10 @@ if (scored.length > 0) {
   console.log(`**${passes}/${scored.length} VERIFIED_PASS (${pct}%)** across ${tasks.length} tasks x ${models.length} routes.`)
 } else {
   console.log(`**0 scoreable trials** — no trial in this sweep reached the model.`)
+}
+const contaminated = rows.filter(r => INVALID_OBSERVATION.has(r.outcome)).length
+if (contaminated > 0) {
+  console.log(`\n${contaminated} trial(s) committed the tune into the graded history (TUNE_CONTAMINATED) and are excluded from the pass rate: they are not comparable against an untuned arm.`)
 }
 if (unreached > 0) {
   const byKind = {}

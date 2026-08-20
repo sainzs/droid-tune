@@ -79,6 +79,52 @@ test('the tune is invisible to git: history unchanged and `git add -A` cannot st
   }
 })
 
+// .git/info/exclude is friction, not a capability boundary: an agent that wants
+// to commit the tune can still do it. What must hold is that the harness NOTICES
+// — a contaminated trial cannot be scored as a clean result for the tuned arm.
+test('`git add -f` can still stage the tune — the exclude file is not a boundary', () => {
+  const wt = seededRepo()
+  try {
+    applyTune(wt, ledgerLite)
+    execFileSync('git', ['-C', wt, 'add', '-f', TUNE_FILENAME])
+    assert.equal(
+      git(wt, ['diff', '--cached', '--name-only']).stdout.trim(), TUNE_FILENAME,
+      'this is the documented gap the runner-side contamination check exists to catch'
+    )
+  } finally {
+    rmSync(wt, { recursive: true, force: true })
+  }
+})
+
+// End-to-end: the agent solves the task AND commits the tune. Grading it as a
+// pass would credit the tuned arm with a result whose graded tree is not
+// comparable to the untuned arm's — exactly the claim the A/B rests on.
+test('a trial whose agent commits the tune is TUNE_CONTAMINATED, not VERIFIED_PASS', async () => {
+  const runsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-taint-runs-'))
+  const sessionsDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-taint-sess-'))
+  const configPath = path.join(runsDir, 'config.json')
+  writeFileSync(configPath, JSON.stringify({
+    customModels: [{ model: 'fake-model', id: 'custom:fake-0', provider: 'anthropic', baseUrl: 'https://api.z.ai/api/anthropic', apiKey: '${X_KEY}' }]
+  }))
+  try {
+    const r = await runTrial({
+      taskDir: path.join(root, 'tasks', 't001-greet-script'),
+      model: 'custom:fake-0',
+      droidPath: path.join(root, 'fixtures', 'bin', 'fake-droid-trial'),
+      sessionsDir, configPath, runsDir, tuneFile: ledgerLite,
+      env: { ...process.env, X_KEY: 'k', FAKE_DROID_MODE: 'passtainted', FAKE_DROID_SESSIONS_DIR: sessionsDir }
+    })
+    assert.equal(r.outcome, 'TUNE_CONTAMINATED')
+    assert.match(r.results.reason, /committed AGENTS\.md into the graded history/)
+    // The evidence must show it, not just the verdict.
+    const events = readFileSync(path.join(runsDir, ...String(r.trialId).split('/'), 'events.jsonl'), 'utf8')
+    assert.match(events, /tune\.contaminated/)
+  } finally {
+    rmSync(runsDir, { recursive: true, force: true })
+    rmSync(sessionsDir, { recursive: true, force: true })
+  }
+})
+
 test('applying a tune over a task that ships its own AGENTS.md is refused', () => {
   const wt = seededRepo()
   try {
