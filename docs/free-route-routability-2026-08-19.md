@@ -74,7 +74,8 @@ so provider trouble cannot be laundered into a model-quality claim.
 ## Reproducing
 
 ```sh
-source ~/.factory/env.sh   # defines the BYOK keys the configured routes reference
+# Ensure the ${VAR}s referenced by your settings.json customModels[] are set in
+# the environment; `droidtune diagnose` names any that are missing.
 node bin/droidtune.js trial --task tasks/t001-greet-script --model <route> \
   --tune "p-<route>" --runs-dir /tmp/dt-probe-runs --timeout-ms 90000
 ```

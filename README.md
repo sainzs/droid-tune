@@ -2,13 +2,30 @@
 
 <img src="assets/hero.gif" alt="droid-tune animated terminal capture" width="800" />
 
-**Diagnose. Tune. Verify. — More verified work. Fewer wasted tokens.**
+**Grade the commit, not the narration.**
+
+## It caught four models doing the work and never shipping it
+
+On `t004-git-surgery`, four different models repaired the git history exactly
+as asked — inspected the log, fixed `add`/`multiply`, dropped `JUNK.txt`,
+checked the behavioral contract — and then **never ran `git commit`**.
+
+**7 of 8 attempts submitted nothing.** The working tree looked right. The
+transcript read like success. A grader that inspects file contents or diffs
+would have passed all seven.
+
+droid-tune scores the task the way the task was written: the contract says
+*commit your result on `main`*, so an uncommitted result is `NO_SUBMISSION`.
+That single distinction is the whole point of the harness — agents narrate
+completion far more reliably than they achieve it, and anything that grades
+narration will overstate them.
+
+> One `nemotron-3.5-lightning-free` attempt did commit, and passed. The failure
+> is near-universal in this suite, not absolute.
 
 An open-source diagnostic, tuning, and verification toolkit for
-[Factory Droid](https://docs.factory.ai). It answers one question, mechanically:
-which Droid configuration delivers the most *verified* engineering work per
-dollar — with evidence packs, paired trials, and claims that never outrun their
-data.
+[Factory Droid](https://docs.factory.ai): evidence packs, isolated trials, and
+claims that never outrun their data.
 
 > **Unofficial community project. Not affiliated with Factory.**
 > "Factory Droid" is referenced as the measured product, nominative use only.
@@ -23,10 +40,7 @@ not been run; `baseline` requires explicit spend confirmation. See
 
 In this suite, on 2026-08-19, the original M4 flake check observed
 **29/40 `VERIFIED_PASS`** across five original tasks and four OpenCode Zen
-free routes, at **$0**. **t004-git-surgery** was the discriminative
-instrument: **7/8 `NO_SUBMISSION`** — agents did the technical work and
-omitted the required `git commit`. One `nemotron-3.5-lightning-free`
-attempt committed and passed. Full matrix, lineage notes, and limitations:
+free routes, at **$0**. Full matrix, lineage notes, and limitations:
 [`docs/m4-flake-check-2026-08.md`](docs/m4-flake-check-2026-08.md).
 
 | task | hy3-free | laguna-s-2-1-free | nemotron-3-5-lightning-free | nemotron-3-ultra-free |
@@ -90,12 +104,27 @@ node bin/droidtune.js diagnose --json   # machine-readable
 Run the included toy task through a configured BYOK model:
 
 ```sh
-source ~/.factory/env.sh
 node bin/droidtune.js trial \
   --task tasks/t001-greet-script \
   --model hy3-free \
   --tune m2-smoke
 ```
+
+**Credentials.** droidtune never asks for a key. It runs `droid exec`, which
+reads your `~/.factory/settings.json`; where a `customModels[]` entry
+references a credential as `${SOME_VAR}`, that variable must be set in the
+environment when you run droidtune. Whatever you already do to put those
+variables in your shell is what droidtune needs — an `export` in your shell
+profile, a secrets manager, a `direnv` file, or sourcing a file of your own.
+
+`droidtune diagnose` reports exactly which referenced variables are missing,
+by name, before a trial can waste a run. Credential *values* are never read,
+printed, or written into an evidence pack.
+
+> Earlier revisions of this README told you to `source ~/.factory/env.sh`.
+> That is the author's personal file, not a Droid convention — it does not
+> exist on your machine unless you created it. It still works as one way to
+> set the variables, but it is not a requirement.
 
 Exit codes: `0` clean or `VERIFIED_PASS` · `1` faults or another trial
 outcome · `2` usage error.
