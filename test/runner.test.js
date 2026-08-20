@@ -54,6 +54,36 @@ test('pass mode → VERIFIED_PASS with complete evidence pack', async () => {
   }
 })
 
+test('pack provenance stamps the runner\'s own git SHA/dirty state, and a caller-supplied provenance cannot shadow it', async () => {
+  const ctx = makeEnv('pass')
+  try {
+    // Ground truth from the actual droid-tune repo (not the fake task
+    // worktree) — this repo IS the runner.
+    const { execFileSync } = await import('node:child_process')
+    const realSha = execFileSync('git', ['-C', root, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+    const realDirty = execFileSync('git', ['-C', root, 'status', '--porcelain'], { encoding: 'utf8' }).trim().length > 0
+
+    const r = await runTrial({
+      taskDir, model: 'custom:fake-0', droidPath: fakeDroid,
+      sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir, env: ctx.env,
+      // A caller-supplied provenance must never be able to overwrite the
+      // computed runnerSha/runnerDirty with a spoofed clean value.
+      provenance: { runnerSha: 'SPOOFED-NOT-REAL', runnerDirty: false, note: 'caller-supplied field survives' }
+    })
+    assert.equal(r.outcome, 'VERIFIED_PASS')
+    const pack = ctx.packDir(r)
+    const manifest = JSON.parse(readFileSync(path.join(pack, 'manifest.json'), 'utf8'))
+    assert.equal(manifest.provenance.runnerSha, realSha)
+    assert.equal(manifest.provenance.runnerDirty, realDirty)
+    assert.notEqual(manifest.provenance.runnerSha, 'SPOOFED-NOT-REAL')
+    // Non-conflicting caller-supplied fields still pass through untouched.
+    assert.equal(manifest.provenance.note, 'caller-supplied field survives')
+  } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
 test('native route omits model override and writes observed-credit pricing', async () => {
   const ctx = makeEnv('pass')
   try {
