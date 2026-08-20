@@ -83,6 +83,35 @@ test('findPacks discovers routed and pre-route packs in the same tree', () => {
   ])
 })
 
+test('findPacks orders attempt directories naturally, not lexicographically', () => {
+  // A plain readdirSync().sort() would emit attempt-1, attempt-10, attempt-11,
+  // attempt-12, attempt-2, … — misleading in any 10+ attempt table.
+  const dir = tree(Array.from({ length: 12 }, (_, i) => `hy3-free/t004-git-surgery/attempt-${i + 1}`))
+  const found = findPacks(dir).map(d => path.basename(d))
+  assert.ok(found.indexOf('attempt-2') < found.indexOf('attempt-10'))
+  assert.deepEqual(found, Array.from({ length: 12 }, (_, i) => `attempt-${i + 1}`))
+})
+
+test('mixed-name sibling dirs interleave deterministically around attempt numbers', () => {
+  const dir = tree([
+    'hy3-free/t004-git-surgery/attempt-1',
+    'hy3-free/t004-git-surgery/attempt-2',
+    'hy3-free/t004-git-surgery/attempt-10',
+    'hy3-free/t004-git-surgery/attempt-1-retry',
+    't800-demo/attempt-1',
+    't800-demo/attempt-1-final'
+  ])
+  const found = findPacks(dir).map(d => packLabel(dir, d))
+  assert.deepEqual(found, [
+    path.join('hy3-free', 't004-git-surgery', 'attempt-1'),
+    path.join('hy3-free', 't004-git-surgery', 'attempt-1-retry'),
+    path.join('hy3-free', 't004-git-surgery', 'attempt-2'),
+    path.join('hy3-free', 't004-git-surgery', 'attempt-10'),
+    path.join('t800-demo', 'attempt-1'),
+    path.join('t800-demo', 'attempt-1-final')
+  ])
+})
+
 test('the task is the pack parent at either depth, and two routes stay distinct', () => {
   const dir = tree(['hy3-free/t004-git-surgery/attempt-1', 't004-git-surgery/attempt-1'])
   const packs = findPacks(dir)
