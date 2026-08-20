@@ -70,6 +70,34 @@ test('--demo human output renders findings and verdict', () => {
   assert.match(r.stdout, /5 fault\(s\)/)
 })
 
+test('--demo exit 1 includes a note that this is expected, not a broken tool (item 6d)', () => {
+  const human = run(['diagnose', '--demo'])
+  assert.equal(human.code, 1)
+  assert.match(human.stdout, /demo note:.*exit 1 is the expected\/correct result/)
+
+  const json = run(['diagnose', '--demo', '--json'])
+  assert.equal(json.code, 1)
+  const parsed = JSON.parse(json.stdout)
+  assert.match(parsed.demoNote, /exit 1 is the expected\/correct result/)
+})
+
+test('a clean (non-demo, non-fault) diagnose run has no demo note', () => {
+  const fakeHome = mkdtempSync(path.join(os.tmpdir(), 'droidtune-nodemonote-home-'))
+  try {
+    const r = run([
+      'diagnose', '--json',
+      '--config', path.join(root, 'fixtures', 'settings', 'clean-settings.json'),
+      '--sessions-dir', path.join(root, 'fixtures', 'sessions-clean'),
+      '--droid-path', path.join(root, 'fixtures', 'bin', 'fake-droid')
+    ], { env: { ...process.env, HOME: fakeHome, ZAI_API_KEY: 'fixture-value-not-a-real-key' } })
+    assert.equal(r.code, 0)
+    const parsed = JSON.parse(r.stdout)
+    assert.equal(parsed.demoNote, undefined)
+  } finally {
+    rmSync(fakeHome, { recursive: true, force: true })
+  }
+})
+
 test('clean config + sessions exit 0', () => {
   // clean-settings.json references ${ZAI_API_KEY}; the credential preflight
   // (DT010) requires it to be present. Set it explicitly and point HOME at an

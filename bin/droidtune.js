@@ -339,12 +339,21 @@ async function main () {
   if (cmd !== 'diagnose') usageError(`unknown command: ${cmd}`)
   if (opts.probe !== null && opts.demo) usageError('--probe cannot be combined with --demo')
   const result = await runDiagnose(opts)
+  const faults = result.findings.filter(f => f.severity === 'fault')
+  // --demo runs against bundled fixtures deliberately seeded with faults
+  // (plaintext keys, missing transcripts, etc.) so the exit-1 case has
+  // something concrete to show. A first-run user trying --demo has no way to
+  // know that in advance, so a nonzero exit reads as "the tool is broken"
+  // rather than "the demo is working as intended." Say so explicitly.
+  const demoNote = (opts.demo && faults.length > 0)
+    ? 'demo note: fixtures intentionally contain faults (DT002-DT006) to demonstrate diagnose\'s findings — exit 1 is the expected/correct result here, not a failure of the tool.'
+    : null
   if (opts.json) {
-    process.stdout.write(JSON.stringify(result, null, 2) + '\n')
+    process.stdout.write(JSON.stringify(demoNote ? { ...result, demoNote } : result, null, 2) + '\n')
   } else {
     process.stdout.write(renderDiagnose(result) + '\n')
+    if (demoNote) process.stdout.write('\n' + demoNote + '\n')
   }
-  const faults = result.findings.filter(f => f.severity === 'fault')
   process.exitCode = faults.length > 0 ? 1 : 0
 }
 
