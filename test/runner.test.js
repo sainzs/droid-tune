@@ -19,7 +19,11 @@ function makeEnv (mode) {
   }))
   return {
     runsDir, sessionsDir, configPath,
-    env: { ...process.env, FAKE_DROID_MODE: mode, FAKE_DROID_SESSIONS_DIR: sessionsDir },
+    // The fixture config references its credential via ${X_KEY}. Supply it so
+    // the env preflight passes for normal trials; individual fail-fast tests
+    // delete this key to simulate an unsourced credentials file. Values are
+    // never asserted on or forwarded out of the parent env prefix-allowlist.
+    env: { ...process.env, X_KEY: 'fake-test-credential', FAKE_DROID_MODE: mode, FAKE_DROID_SESSIONS_DIR: sessionsDir },
     packDir: (r) => path.join(runsDir, 'ad-hoc', 't001-greet-script', 'attempt-1')
   }
 }
@@ -143,6 +147,80 @@ test('S2: multi-turn failure mentioning quota → DROID_ERROR (not laundered)', 
     rmSync(ctx.runsDir, { recursive: true, force: true })
     rmSync(ctx.sessionsDir, { recursive: true, force: true })
   }
+})
+
+test('S2: PROVIDER_ERROR sub-classified as rate_limit', async () => {
+  const ctx = makeEnv('provfail429')
+  try {
+    const r = await runTrial({ taskDir, model: 'custom:fake-0', droidPath: fakeDroid, sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir, env: ctx.env })
+    assert.equal(r.outcome, 'PROVIDER_ERROR')
+    assert.equal(r.results.providerErrorKind, 'rate_limit')
+    const errors = JSON.parse(readFileSync(path.join(ctx.packDir(r), 'errors.json'), 'utf8'))
+    assert.equal(errors.providerDetail, 'BYOK Error: 429 Rate limit exceeded')
+  } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('S2: PROVIDER_ERROR sub-classified as unsupported_model', async () => {
+  const ctx = makeEnv('provfailmodel')
+  try {
+    const r = await runTrial({ taskDir, model: 'custom:fake-0', droidPath: fakeDroid, sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir, env: ctx.env })
+    assert.equal(r.outcome, 'PROVIDER_ERROR')
+    // The unsupported_model pattern must win over the auth pattern even though
+    // the result also could read as a 401-shaped rejection.
+    assert.equal(r.results.providerErrorKind, 'unsupported_model')
+  } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('env preflight: missing ${VAR} credential → fail-fast (not PROVIDER_ERROR)', async () => {
+  const ctx = makeEnv('pass')
+  const envWithoutCred = { ...ctx.env }
+  // The fixture config references ${X_KEY}; delete it to simulate an operator
+  // who has not sourced ~/.factory/env.sh. No real env.sh exists in CI, so the
+  // auto-load cannot supply it and runTrial must throw before any droid spawn.
+  delete envWithoutCred.X_KEY
+  let threw = false
+  let message = ''
+  try {
+    await runTrial({
+      taskDir, model: 'custom:fake-0', droidPath: fakeDroid,
+      sessionsDir: ctx.sessionsDir, configPath: ctx.configPath,
+      runsDir: ctx.runsDir, env: envWithoutCred
+    })
+  } catch (err) {
+    threw = true
+    message = err.message
+  }
+  assert.ok(threw, 'runTrial must fail-fast when a referenced credential var is missing')
+  assert.match(message, /X_KEY/, 'error must name the missing variable')
+  assert.match(message, /env\.sh/, 'error must point at the credentials file to source')
+  assert.ok(!message.includes('429') && !message.includes('rate limit'), 'must NOT be classified as a provider rejection')
+  assert.equal(readdirSync(ctx.sessionsDir).length, 0, 'no droid session should have been created')
+  rmSync(ctx.runsDir, { recursive: true, force: true })
+  rmSync(ctx.sessionsDir, { recursive: true, force: true })
+})
+
+test('env preflight: native route skips credential preflight', async () => {
+  const ctx = makeEnv('pass')
+  // native:true must not preflight ${VAR} credentials from a config.
+  let threw = false
+  try {
+    await runTrial({
+      taskDir, native: true, droidPath: fakeDroid,
+      sessionsDir: ctx.sessionsDir, configPath: ctx.configPath,
+      runsDir: ctx.runsDir, env: { ...ctx.env }
+    })
+  } catch {
+    threw = true
+  }
+  assert.ok(!threw, 'native route must not throw a credential preflight error')
+  rmSync(ctx.runsDir, { recursive: true, force: true })
+  rmSync(ctx.sessionsDir, { recursive: true, force: true })
 })
 
 test('hang mode with short timeout → TIMEOUT', async () => {

@@ -33,6 +33,18 @@ case "$MODE" in
     printf '%s\n' '{"type":"result","subtype":"failure","is_error":true,"duration_ms":5000,"num_turns":0,"result":"BYOK Error: 429 rate limit","session_id":"fake-prov-0000","usage":{"input_tokens":0,"output_tokens":0}}'
     exit 1
     ;;
+  provfail429)
+    # PROVIDER_ERROR with a rate-limit-shaped rejection → providerErrorKind
+    # must be "rate_limit".
+    printf '%s\n' '{"type":"result","subtype":"failure","is_error":true,"duration_ms":5000,"num_turns":0,"result":"BYOK Error: 429 Rate limit exceeded","session_id":"fake-prov-429","usage":{"input_tokens":0,"output_tokens":0}}'
+    exit 1
+    ;;
+  provfailmodel)
+    # PROVIDER_ERROR with an unsupported/misconfigured model id rejection →
+    # providerErrorKind must be "unsupported_model" (checked before auth).
+    printf '%s\n' '{"type":"result","subtype":"failure","is_error":true,"duration_ms":5000,"num_turns":0,"result":"BYOK Error: Model claude-opus-99 is not supported","session_id":"fake-prov-model","usage":{"input_tokens":0,"output_tokens":0}}'
+    exit 1
+    ;;
   multiturnfail)
     # A REAL multi-turn task failure whose free-text mentions quota/overloaded.
     # num_turns>0 must keep this OUT of PROVIDER_ERROR (anti retry-grooming §8.8).
