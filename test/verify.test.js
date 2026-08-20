@@ -88,6 +88,24 @@ test('checkCtrf throws on missing, invalid, and summary-less ctrf.json', () => {
   }
 })
 
+test('checkCtrf rejects a run that executed no tests', () => {
+  // A verifier can exit 0 and claim reward 1 while its suite ran nothing at
+  // all. Accepting that would let an empty run be published as VERIFIED_PASS.
+  const base = tmp()
+  try {
+    writeFileSync(path.join(base, 'ctrf.json'), '{"results":{"summary":{"tests":0}}}\n')
+    verifierThrows(() => checkCtrf(base), 'ctrf.json reports no tests run')
+
+    writeFileSync(path.join(base, 'ctrf.json'), '{"results":{"summary":{"tests":-3}}}\n')
+    verifierThrows(() => checkCtrf(base), 'ctrf.json reports no tests run')
+
+    writeFileSync(path.join(base, 'ctrf.json'), '{"results":{"summary":{"tests":1.5}}}\n')
+    verifierThrows(() => checkCtrf(base), 'ctrf.json reports no tests run')
+  } finally {
+    rmSync(base, { recursive: true, force: true })
+  }
+})
+
 test('checkCtrf returns the parsed object when valid', () => {
   const base = tmp()
   try {

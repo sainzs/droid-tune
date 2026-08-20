@@ -44,7 +44,7 @@ if (!existsSync(runsDir)) {
 // A trial that never reached the model is not a model result. Keep these
 // separable from genuine model outcomes so they can never be laundered into a
 // quality signal.
-const NON_MODEL = new Set(['PROVIDER_ERROR', 'DROID_ERROR', 'VERIFIER_ERROR'])
+const NON_MODEL = new Set(['PROVIDER_ERROR', 'DROID_ERROR', 'VERIFIER_ERROR', 'HARNESS_ERROR'])
 
 // Recover the underlying provider condition. Prefer a structured field if the
 // runner recorded one; otherwise fall back to the transcript's BYOK error text.

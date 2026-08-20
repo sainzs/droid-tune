@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
-import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { runTrial } from '../lib/runner.js'
@@ -263,6 +263,69 @@ test('hang mode with short timeout → TIMEOUT', async () => {
     const r = await runTrial({ taskDir, model: 'custom:fake-0', droidPath: fakeDroid, sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir, timeoutMs: 2000, env: ctx.env })
     assert.equal(r.outcome, 'TIMEOUT')
   } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('a harness fault AFTER the attempt started still writes an evidence pack', async () => {
+  // Before this, a throw between the droid spawn and finish() (a failed grading
+  // clone, an unreadable artifact) escaped runTrial with no manifest and no
+  // results.json: an attempt that really happened, absent from the evidence.
+  // The claims protocol requires every attempt to be publishable.
+  const ctx = makeEnv('pass')
+  try {
+    // Break grading from the outside: the task's tests dir is copied into the
+    // grade clone, so pointing the trial at a task whose tests vanished mid-run
+    // is awkward — instead force the fault by making the runs dir unwritable is
+    // not portable. Use the documented seam: a taskDir whose tests/ is absent
+    // makes cpSync throw AFTER the spawn has already happened.
+    const brokenTask = mkdtempSync(path.join(os.tmpdir(), 'droidtune-brokentask-'))
+    cpSync(taskDir, brokenTask, { recursive: true })
+    rmSync(path.join(brokenTask, 'tests'), { recursive: true, force: true })
+    // The call may resolve with a HARNESS_ERROR pack or rethrow if pack writing
+    // itself cannot complete; either way the evidence on disk is what matters.
+    let outcome = null
+    try {
+      const r = await runTrial({
+        taskDir: brokenTask, taskId: 't001-greet-script', model: 'custom:fake-0', droidPath: fakeDroid,
+        sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir, env: ctx.env
+      })
+      outcome = r.outcome
+    } catch { /* fault surfaced instead — assertions below still apply */ }
+    if (outcome !== null) assert.equal(outcome, 'HARNESS_ERROR')
+    const attemptDir = path.join(ctx.runsDir, 'ad-hoc', 'fake-0', 't001-greet-script', 'attempt-1')
+    assert.ok(existsSync(path.join(attemptDir, 'events.jsonl')), 'ledger must survive a harness fault')
+    const events = readFileSync(path.join(attemptDir, 'events.jsonl'), 'utf8')
+    assert.match(events, /outcome\.classified/)
+    assert.match(events, /HARNESS_ERROR/)
+    rmSync(brokenTask, { recursive: true, force: true })
+  } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('a fault BEFORE the attempt starts still fails fast, with no pack', async () => {
+  // The counterpart guarantee: a bad seed is an operator error caught before any
+  // spend. Manufacturing an evidence pack for an attempt that never began would
+  // put a trial in the record that never ran.
+  const ctx = makeEnv('pass')
+  const brokenTask = mkdtempSync(path.join(os.tmpdir(), 'droidtune-badseed-'))
+  try {
+    cpSync(taskDir, brokenTask, { recursive: true })
+    writeFileSync(path.join(brokenTask, 'environment', 'seed.sh'), 'exit 3\n')
+    await assert.rejects(
+      () => runTrial({
+        taskDir: brokenTask, taskId: 't001-greet-script', model: 'custom:fake-0', droidPath: fakeDroid,
+        sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir, env: ctx.env
+      }),
+      /seed\.sh failed/
+    )
+    const attemptDir = path.join(ctx.runsDir, 'ad-hoc', 'fake-0', 't001-greet-script', 'attempt-1')
+    assert.ok(!existsSync(path.join(attemptDir, 'manifest.json')), 'no pack for an attempt that never started')
+  } finally {
+    rmSync(brokenTask, { recursive: true, force: true })
     rmSync(ctx.runsDir, { recursive: true, force: true })
     rmSync(ctx.sessionsDir, { recursive: true, force: true })
   }
