@@ -1,8 +1,8 @@
 # droid-tune — Agent Notes
 
 Droid Tune-Up: open-source diagnostic, tuning, and verification toolkit for
-Factory Droid — measures and maximizes **verified** engineering work per
-dollar. Built as a Factory Guild submission (factory.ai/ambassador).
+Factory Droid — measures **verified** engineering work per dollar and supports
+controlled tuning against that measurement. Built as a Factory Guild submission (factory.ai/ambassador).
 
 **Status: M4 shipped; M5 infrastructure done, paid baseline not run
 (2026-08-19).** `PLAN.md` is the source of truth; `docs/research-2026-08.md` is
@@ -25,7 +25,8 @@ Results: `docs/m4-flake-check-2026-08.md`; aggregate any run with
 
 M5 adds versioned pricing (`lib/pricing.js`), an explicit-spend native baseline
 that freezes bundle provenance before execution (`configs/native-droid.json`),
-and a validated preregistered claim under `claims/`. Native Droid is accounted
+and a schema-validated preregistration under `claims/` (validated by
+`scripts/check-claim.js` in CI; preregistered, not yet run). Native Droid is accounted
 in observed Factory Standard Credits; do not infer a USD conversion. No paid
 baseline has been run. `baseline` must keep the `--confirm-spend` gate.
 
@@ -105,7 +106,7 @@ a growing transcript, reporting each once and withholding `no-test-finish`
 until the watch ends.
 
 `runs/` is gitignored, so published numbers are reproduced from `demo-pack/` —
-23 sanitized real evidence packs. `node scripts/check-demo-table.js` asserts
+24 sanitized real evidence packs, 23 of which reached the model. `node scripts/check-demo-table.js` asserts
 the committed snapshot and the README block both still match what
 `scripts/results-table.js` regenerates; CI fails on drift.
 
