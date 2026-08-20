@@ -1,5 +1,8 @@
 # Droid Tune-Up
 
+[![ci](https://github.com/sainzs/droid-tune/actions/workflows/ci.yml/badge.svg)](https://github.com/sainzs/droid-tune/actions/workflows/ci.yml)
+[![free routes](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fsainzs%2Fdroid-tune%2Fmain%2Fweather%2Fbadge.json)](weather/README.md)
+
 <img src="assets/hero.gif" alt="droid-tune animated terminal capture" width="800" />
 
 **Grade the commit, not the narration.**
@@ -102,6 +105,8 @@ free routes on 2026-08-19 found only 4 usable; the rest failed with 429 rate
 limiting, `401 ... is not supported`, a local config gap, or a timeout — all
 of which `droid exec` reports as the same `PROVIDER_ERROR`. See
 [`docs/free-route-routability-2026-08-19.md`](docs/free-route-routability-2026-08-19.md).
+That was a one-off snapshot; [`weather/`](weather/README.md) now keeps it
+current daily.
 
 ## Install as a Droid plugin
 
@@ -170,6 +175,7 @@ trial outcome, or violations found · `2` usage error.
 | `baseline --confirm-spend` | Freezes the committed `native-droid-v1` bundle, then runs its six live Droid Core tasks; refuses to start without the confirmation flag |
 | `triforce` | Runs oracle, no-op, and cheat controls for every full-layout task without calling Droid |
 | `audit <dir>` | Counts process-discipline violations in a pack's recorded transcript — offline, no model call |
+| `badge <target>` | Emits a shields.io endpoint badge from a runs dir or from the free-route weather series |
 
 Diagnose flags: `--probe [model]` · `--demo` · `--limit <n>` · `--json`.
 
@@ -224,6 +230,48 @@ DeepSeek V4 tables, exact zero for the frozen Zen-free table, or observed
 Factory Standard Credits for native Droid. Unknown routes and stale tables fail
 closed. Development packs remain ineligible when any required artifact is
 absent. No transcript, verifier provenance, or pricing snapshot means no claim.
+
+## Free-route weather
+
+The "known-free routes" line in this README is a dated observation, not a
+standing claim. A scheduled workflow probes each configured free Zen route once
+a day with one minimal chat-completion request, classifies the answer, and
+appends it to an append-only series:
+
+- [`weather/README.md`](weather/README.md) — route × last 14 days, regenerated
+  from the data
+- [`weather/route-status.jsonl`](weather/route-status.jsonl) — the raw
+  observations
+- the **free routes** badge above reads
+  [`weather/badge.json`](weather/badge.json) through the shields endpoint API
+
+Failure is recorded as data: a rate-limited, unroutable, or unreachable route
+produces an observation exactly like a healthy one. Classification runs on the
+response message rather than the status code, because this gateway answers both
+"that model id is not routable" and "your credential is bad" with a 401 — and
+the first observation already caught two routes doing exactly that.
+
+```sh
+node scripts/route-weather.js --render          # regenerate the report offline
+node scripts/route-weather.js --render --check  # fail if it has drifted
+node bin/droidtune.js badge weather             # the same numbers as a badge
+```
+
+## Badges
+
+`droidtune badge` emits [shields.io endpoint
+JSON](https://shields.io/badges/endpoint-badge) computed from committed
+evidence, never from a number someone typed once:
+
+```sh
+node bin/droidtune.js badge demo-pack   # {"schemaVersion":1,"label":"verified pass","message":"13/23 (57%)",…}
+node bin/droidtune.js badge weather     # {"schemaVersion":1,"label":"free routes","message":"4/8 up",…}
+node bin/droidtune.js badge runs/m4-flake3 --out badge.json
+```
+
+A runs badge scores only trials that reached the model — the same denominator
+`results-table.js` uses — and a target with nothing to score says `no data` in
+grey rather than reporting `0%`.
 
 ## Tunes
 

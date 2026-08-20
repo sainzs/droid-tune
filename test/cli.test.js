@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import os from 'node:os'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { runTriforce } from '../lib/triforce.js'
@@ -464,4 +464,69 @@ test('--help documents --tune-file for both trial and run', () => {
   assert.equal(r.code, 0)
   assert.match(r.stdout, /--tune-file <path> {5}Tune dir \(or AGENTS\.md\) copied into the worktree/)
   assert.match(r.stdout, /--tune-file <path> {5}Apply a tune to the worktree/)
+})
+
+// --- badge ---------------------------------------------------------------
+
+test('badge without a target is a usage error', () => {
+  const r = run(['badge'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /badge requires a target/)
+})
+
+test('badge on a missing target is a usage error', () => {
+  const r = run(['badge', path.join(root, 'no-such-thing')])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /not found/)
+})
+
+test('badge over a runs dir emits shields endpoint JSON matching the results table', () => {
+  const r = run(['badge', 'demo-pack'], { cwd: root })
+  assert.equal(r.code, 0)
+  const badge = JSON.parse(r.stdout)
+  assert.equal(badge.schemaVersion, 1)
+  assert.equal(badge.label, 'verified pass')
+  // scripts/results-table.js reports 13/23 (57%) over the same fixture.
+  assert.equal(badge.message, '13/23 (57%)')
+})
+
+test('badge resolves a bare target against the repo root, not the caller cwd', () => {
+  const r = run(['badge', 'demo-pack'], { cwd: os.tmpdir() })
+  assert.equal(r.code, 0, r.stderr)
+  assert.equal(JSON.parse(r.stdout).message, '13/23 (57%)')
+})
+
+test('badge dispatches to the weather series on content, not on the name', () => {
+  const fromDir = run(['badge', 'weather'], { cwd: root })
+  const fromFile = run(['badge', path.join(root, 'weather', 'route-status.jsonl')])
+  assert.equal(fromDir.code, 0)
+  assert.equal(JSON.parse(fromDir.stdout).label, 'free routes')
+  assert.equal(fromDir.stdout, fromFile.stdout)
+})
+
+// The workflow writes weather/badge.json through scripts/route-weather.js, and
+// a reader can regenerate it with `droidtune badge weather`. If those two ever
+// disagreed, the README badge and the CLI would tell different stories.
+test('the badge CLI agrees byte for byte with the committed weather/badge.json', () => {
+  const r = run(['badge', 'weather'], { cwd: root })
+  assert.equal(r.code, 0)
+  assert.equal(r.stdout, readFileSync(path.join(root, 'weather', 'badge.json'), 'utf8'))
+})
+
+test('badge --out writes the file and reports what it wrote', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-badge-cli-'))
+  try {
+    const out = path.join(dir, 'badge.json')
+    const r = run(['badge', 'demo-pack', '--out', out], { cwd: root })
+    assert.equal(r.code, 0)
+    assert.match(r.stdout, /verified pass — 13\/23 \(57%\)/)
+    assert.equal(JSON.parse(readFileSync(out, 'utf8')).message, '13/23 (57%)')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('badge --label overrides the default label', () => {
+  const r = run(['badge', 'demo-pack', '--label', 'demo pack'], { cwd: root })
+  assert.equal(JSON.parse(r.stdout).label, 'demo pack')
 })

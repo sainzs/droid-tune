@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { auditPath, renderAudit } from '../lib/audit.js'
+import { badgeFromRuns, badgeFromWeather, renderBadge } from '../lib/badge.js'
 import { runDiagnose } from '../lib/diagnose.js'
 import { renderDiagnose } from '../lib/report.js'
 import { runTrial } from '../lib/runner.js'
@@ -11,6 +12,7 @@ import { makeRunOne, runTriforce } from '../lib/triforce.js'
 import { runBaseline } from '../lib/baseline.js'
 import { resolveDroid } from '../lib/droid-path.js'
 import { resolveTuneFile } from '../lib/tune.js'
+import { readObservations, summarize } from '../lib/weather.js'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -23,6 +25,7 @@ Usage:
   droidtune run <task> [flags]   Grade a task offline (oracle/--noop/--cheat) — triforce self-test
   droidtune triforce             Run the offline tri-force self-test (49 legs)
   droidtune audit <dir> [flags]  Count process violations in a pack (or a whole runs dir) — offline
+  droidtune badge <target>       Emit a shields.io endpoint badge from a runs dir or from weather/
 
 diagnose flags:
   --json                 Machine-readable output
@@ -63,6 +66,11 @@ audit flags:
   --stall-threshold <n>  Identical command repeats that count as a stall (default 3)
   --json                 Machine-readable output
 
+badge flags:
+  <target>               A runs/demo-pack dir, or 'weather' (or a route-status.jsonl)
+  --label <text>         Badge label (default: "verified pass" / "free routes")
+  --out <file>           Write the JSON to a file instead of stdout
+
 common flags:
   --sessions-dir <path>  Override ~/.factory/sessions
   --config <file>        Override ~/.factory/settings.json
@@ -101,6 +109,8 @@ const VALUE_FLAGS = new Map([
   ['--cheat', 'cheat'],
   ['--bundle', 'bundlePath'],
   ['--window', 'window'],
+  ['--label', 'label'],
+  ['--out', 'out'],
   ['--stall-threshold', 'stallThreshold']
 ])
 const INT_FLAG_KEYS = new Set(['limit', 'timeoutMs', 'attempt', 'window', 'stallThreshold'])
@@ -126,7 +136,7 @@ function parseArgs (argv) {
       opts.confirmSpend = true
     } else if (cmd === 'run' && !a.startsWith('-') && opts.task === undefined) {
       opts.task = a
-    } else if (cmd === 'audit' && !a.startsWith('-') && opts.target === undefined) {
+    } else if ((cmd === 'audit' || cmd === 'badge') && !a.startsWith('-') && opts.target === undefined) {
       opts.target = a
     } else if (VALUE_FLAGS.has(a)) {
       const v = rest[++i]
@@ -377,6 +387,46 @@ async function cmdAudit (opts) {
   process.exitCode = (result.total ?? 0) > 0 ? 1 : 0
 }
 
+// `badge` reads committed artifacts and prints JSON. Like `audit`, it is
+// offline by construction — there is nothing here to spend or to leak.
+//
+// A badge is the most-read number in a repository and the least-checked one,
+// so both variants are computed from the same files the reporting tools read
+// rather than from a number someone typed once.
+async function cmdBadge (opts) {
+  if (!opts.target) {
+    usageError("badge requires a target: a runs/demo-pack directory, or 'weather'")
+  }
+  let target = opts.target
+  if (!path.isAbsolute(target) && !existsSync(target)) {
+    const candidate = path.join(REPO_ROOT, target)
+    if (existsSync(candidate)) target = candidate
+  }
+  target = path.resolve(target)
+  if (!existsSync(target)) usageError(`not found: ${opts.target}`)
+
+  // Dispatch on what the target actually holds, not on its name: a weather
+  // series is a route-status.jsonl (or the directory containing one).
+  const seriesPath = target.endsWith('.jsonl')
+    ? target
+    : path.join(target, 'route-status.jsonl')
+  const badge = existsSync(seriesPath)
+    ? badgeFromWeather(
+        summarize(readObservations(seriesPath).observations),
+        opts.label ? { label: opts.label } : {}
+      )
+    : badgeFromRuns(target, opts.label ? { label: opts.label } : {})
+
+  const text = renderBadge(badge)
+  if (opts.out) {
+    writeFileSync(path.resolve(opts.out), text)
+    process.stdout.write(`wrote ${path.resolve(opts.out)}: ${badge.label} — ${badge.message}\n`)
+  } else {
+    process.stdout.write(text)
+  }
+  process.exitCode = 0
+}
+
 async function cmdTriforce () {
   // makeRunOne shells back into this CLI from the repo root. Gate every task
   // that has the full Harbor layout (instruction + seed + oracle + tests).
@@ -407,6 +457,7 @@ async function main () {
   if (cmd === 'baseline') return cmdBaseline(opts)
   if (cmd === 'run') return cmdRun(opts)
   if (cmd === 'audit') return cmdAudit(opts)
+  if (cmd === 'badge') return cmdBadge(opts)
   if (cmd === 'triforce') return cmdTriforce()
   if (cmd !== 'diagnose') usageError(`unknown command: ${cmd}`)
   if (opts.probe !== null && opts.demo) usageError('--probe cannot be combined with --demo')
