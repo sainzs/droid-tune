@@ -89,3 +89,63 @@ test('exits 2 when --snapshot does not exist', async () => {
     await rm(path.dirname(demoDir), { recursive: true, force: true })
   }
 })
+
+// The README carries a copy of the table for readers who never run anything.
+// A stale copy there is the exact "numbers you can't check" failure this
+// fixture exists to prevent, so the guard covers it too.
+test('fails when the README demo-table block has drifted from the snapshot', async () => {
+  const demoDir = await tmpDemoPack()
+  try {
+    const readmePath = path.join(path.dirname(demoDir), 'README.md')
+    const snapshot = await readFile(path.join(demoDir, 'EXPECTED-TABLE.md'), 'utf8')
+    const stale = snapshot.replace(/\*\*\d+\/\d+ VERIFIED_PASS[^*]*\*\*/, '**999/999 VERIFIED_PASS (999%)**')
+    await writeFile(readmePath, `# Demo\n\n<!-- BEGIN:DEMO-TABLE -->\n${stale}<!-- END:DEMO-TABLE -->\n`)
+
+    const r = run([
+      '--demo-dir', demoDir,
+      '--snapshot', path.join(demoDir, 'EXPECTED-TABLE.md'),
+      '--readme', readmePath
+    ])
+    assert.equal(r.code, 1)
+    assert.match(r.stderr, /README demo table is out of date/)
+  } finally {
+    await rm(path.dirname(demoDir), { recursive: true, force: true })
+  }
+})
+
+test('fails when the README is missing the demo-table markers', async () => {
+  const demoDir = await tmpDemoPack()
+  try {
+    const readmePath = path.join(path.dirname(demoDir), 'README.md')
+    await writeFile(readmePath, '# Demo\n\nno markers here\n')
+
+    const r = run([
+      '--demo-dir', demoDir,
+      '--snapshot', path.join(demoDir, 'EXPECTED-TABLE.md'),
+      '--readme', readmePath
+    ])
+    assert.equal(r.code, 1)
+    assert.match(r.stderr, /missing the .* markers/)
+  } finally {
+    await rm(path.dirname(demoDir), { recursive: true, force: true })
+  }
+})
+
+test('passes when the README block matches the snapshot exactly', async () => {
+  const demoDir = await tmpDemoPack()
+  try {
+    const readmePath = path.join(path.dirname(demoDir), 'README.md')
+    const snapshot = await readFile(path.join(demoDir, 'EXPECTED-TABLE.md'), 'utf8')
+    await writeFile(readmePath, `# Demo\n\n<!-- BEGIN:DEMO-TABLE -->\n${snapshot}<!-- END:DEMO-TABLE -->\n`)
+
+    const r = run([
+      '--demo-dir', demoDir,
+      '--snapshot', path.join(demoDir, 'EXPECTED-TABLE.md'),
+      '--readme', readmePath
+    ])
+    assert.equal(r.code, 0)
+    assert.match(r.stdout, /and README — OK/)
+  } finally {
+    await rm(path.dirname(demoDir), { recursive: true, force: true })
+  }
+})

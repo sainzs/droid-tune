@@ -51,13 +51,43 @@ free routes, at **$0**. Full matrix, lineage notes, and limitations:
 | `t005-agents-md-compliance` | PASS, PASS | PASS, PASS | PASS, PASS | PASS, PASS |
 | `t007-rename-symbol` | unknown, PASS | PASS, PASS | PASS, PASS | PASS, PASS |
 
-Regenerate either view from the evidence packs — no numbers are hand-written:
+### Reproduce it from a fresh clone
+
+That full sweep lives under `runs/`, which is gitignored — so it is *not*
+something you can check. This is: **`demo-pack/` contains 23 real, unmodified
+evidence packs** from that sweep, sanitized only for absolute paths. Both
+reporting tools read it directly, so you can regenerate real numbers with no
+Droid install, no credentials, and no network:
 
 ```sh
-node scripts/flake-report.js  --runs-dir runs/m4-flake3 \
-  --tasks t002-slugify,t003-path-canonicalize,t004-git-surgery,t005-agents-md-compliance,t007-rename-symbol
-node scripts/results-table.js --runs-dir runs/m4-flake3 --tasks <same list>
+git clone https://github.com/sainzs/droid-tune.git && cd droid-tune
+node scripts/results-table.js --runs-dir demo-pack --title demo-pack
+node scripts/flake-report.js  --runs-dir demo-pack
 ```
+
+That prints, byte for byte:
+
+<!-- BEGIN:DEMO-TABLE -->
+### demo-pack
+
+| task | hy3-free | laguna-s-2-1-free | nemotron-3-5-lightning-free | nemotron-3-ultra-free |
+| --- | --- | --- | --- | --- |
+| `t003-path-canonicalize` | PASS, timeout, PASS | timeout | PASS, timeout | PASS, PASS |
+| `t004-git-surgery` | no-sub, no-sub | no-sub, no-sub | PASS, no-sub | no-sub, no-sub |
+| `t007-rename-symbol` | unknown, PASS | PASS, PASS | PASS, PASS | PASS, PASS |
+
+**13/23 VERIFIED_PASS (57%)** across 3 tasks x 4 routes.
+
+1 further trial(s) never reached the model (1 unknown) and are excluded from the pass rate rather than counted as failures.
+<!-- END:DEMO-TABLE -->
+
+`node scripts/check-demo-table.js` asserts that regeneration still matches
+`demo-pack/EXPECTED-TABLE.md`, and CI fails the build if it drifts — so these
+numbers cannot rot silently.
+
+The 57% here is lower than the headline 74% because `demo-pack` deliberately
+keeps the *hard* tasks: it omits the two tasks that everything passed. It is a
+reproducibility fixture, not a summary of the suite.
 
 Counting note: of those 40 trials, 39 actually reached the model (one never
 did). Scored over trials that reached the model, the rate is **29/39 (74%)**.

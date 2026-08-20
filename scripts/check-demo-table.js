@@ -75,4 +75,32 @@ if (actual !== expected) {
   process.exit(1)
 }
 
-console.log(`demo table matches snapshot (${path.relative(root, snapshotPath)}) — OK`)
+// The snapshot agreeing with the generator is only half the guarantee. README
+// carries a copy of the same table for readers who never run anything, and a
+// stale copy there is exactly the "numbers you can't check" problem this
+// fixture exists to fix. Assert the marked block matches too.
+const readmePath = arg('--readme', path.join(root, 'README.md'))
+const BEGIN = '<!-- BEGIN:DEMO-TABLE -->'
+const END = '<!-- END:DEMO-TABLE -->'
+
+if (existsSync(readmePath)) {
+  const readme = readFileSync(readmePath, 'utf8')
+  const start = readme.indexOf(BEGIN)
+  const end = readme.indexOf(END)
+  if (start === -1 || end === -1 || end < start) {
+    console.error(`${path.relative(root, readmePath)} is missing the ${BEGIN} / ${END} markers around the demo table.`)
+    process.exit(1)
+  }
+  const block = readme.slice(start + BEGIN.length, end).replace(/^\n/, '')
+  if (block !== expected) {
+    console.error(`README demo table is out of date with ${path.relative(root, snapshotPath)}.\n`)
+    console.error('--- expected (snapshot) ---')
+    console.error(expected)
+    console.error('--- actual (README block) ---')
+    console.error(block)
+    console.error(`Replace the block between the markers in ${path.relative(root, readmePath)} with the snapshot contents.`)
+    process.exit(1)
+  }
+}
+
+console.log(`demo table matches snapshot (${path.relative(root, snapshotPath)}) and README — OK`)
