@@ -3,6 +3,7 @@ import { existsSync, readdirSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { auditPath, renderAudit } from '../lib/audit.js'
 import { runDiagnose } from '../lib/diagnose.js'
 import { renderDiagnose } from '../lib/report.js'
 import { runTrial } from '../lib/runner.js'
@@ -20,6 +21,7 @@ Usage:
   droidtune baseline [flags]     Run the frozen native-Droid suite (live; explicit spend confirmation)
   droidtune run <task> [flags]   Grade a task offline (oracle/--noop/--cheat) — triforce self-test
   droidtune triforce             Run the offline tri-force self-test (49 legs)
+  droidtune audit <dir> [flags]  Count process violations in a pack (or a whole runs dir) — offline
 
 diagnose flags:
   --json                 Machine-readable output
@@ -51,6 +53,12 @@ run flags:
   --noop                 Grade an empty diff (no solution applied)
   --cheat <name>         Run tasks/<id>/cheats/<name>.sh instead of the real tests
 
+audit flags:
+  <dir>                  Evidence pack (…/attempt-N) or a runs/demo-pack root (required)
+  --window <n>           Tool events a claim may reach back for its check (default 8)
+  --stall-threshold <n>  Identical command repeats that count as a stall (default 3)
+  --json                 Machine-readable output
+
 common flags:
   --sessions-dir <path>  Override ~/.factory/sessions
   --config <file>        Override ~/.factory/settings.json
@@ -58,7 +66,7 @@ common flags:
   -h, --help             Show this help
 
 Exit codes:
-  0 clean/VERIFIED_PASS · 1 faults or non-pass outcome · 2 usage error
+  0 clean/VERIFIED_PASS/no violations · 1 faults, non-pass outcome, or violations · 2 usage error
 
 Unofficial community project. Not affiliated with Factory.
 `
@@ -86,8 +94,11 @@ const VALUE_FLAGS = new Map([
   ['--runs-dir', 'runsDir'],
   ['--attempt', 'attempt'],
   ['--cheat', 'cheat'],
-  ['--bundle', 'bundlePath']
+  ['--bundle', 'bundlePath'],
+  ['--window', 'window'],
+  ['--stall-threshold', 'stallThreshold']
 ])
+const INT_FLAG_KEYS = new Set(['limit', 'timeoutMs', 'attempt', 'window', 'stallThreshold'])
 
 function parseArgs (argv) {
   if (argv.length === 0) usage(2)
@@ -110,11 +121,13 @@ function parseArgs (argv) {
       opts.confirmSpend = true
     } else if (cmd === 'run' && !a.startsWith('-') && opts.task === undefined) {
       opts.task = a
+    } else if (cmd === 'audit' && !a.startsWith('-') && opts.target === undefined) {
+      opts.target = a
     } else if (VALUE_FLAGS.has(a)) {
       const v = rest[++i]
       if (v === undefined || v.startsWith('-')) usageError(`missing value for ${a}`)
       const key = VALUE_FLAGS.get(a)
-      if (key === 'limit' || key === 'timeoutMs' || key === 'attempt') {
+      if (INT_FLAG_KEYS.has(key)) {
         const n = Number(v)
         if (!Number.isInteger(n) || n < 1) usageError(`${a} must be a positive integer`)
         opts[key] = n
@@ -306,6 +319,30 @@ async function cmdRun (opts) {
   process.exitCode = 0
 }
 
+// `audit` is strictly offline: it reads transcripts that are already on disk.
+// No droid binary, no credentials, no network, no model — so unlike `trial` it
+// has nothing to gate and nothing to spend.
+async function cmdAudit (opts) {
+  if (!opts.target) usageError('audit requires a directory: an evidence pack (…/attempt-N) or a runs/demo-pack root')
+  const target = path.resolve(opts.target)
+  if (!existsSync(target)) usageError(`not found: ${opts.target}`)
+  let result
+  try {
+    result = auditPath(target, { coverageWindow: opts.window, stallThreshold: opts.stallThreshold })
+  } catch (err) {
+    usageError(err.message)
+  }
+  if (opts.json) {
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n')
+  } else {
+    process.stdout.write(renderAudit(result) + '\n')
+  }
+  // Same contract as `diagnose`: 0 clean, 1 when something was found. A pack
+  // with no transcript is missing evidence, not a violation, so it does not
+  // set the exit code — the report says so in words instead.
+  process.exitCode = (result.total ?? 0) > 0 ? 1 : 0
+}
+
 async function cmdTriforce () {
   // makeRunOne shells back into this CLI from the repo root. Gate every task
   // that has the full Harbor layout (instruction + seed + oracle + tests).
@@ -335,6 +372,7 @@ async function main () {
   if (cmd === 'trial') return cmdTrial(opts)
   if (cmd === 'baseline') return cmdBaseline(opts)
   if (cmd === 'run') return cmdRun(opts)
+  if (cmd === 'audit') return cmdAudit(opts)
   if (cmd === 'triforce') return cmdTriforce()
   if (cmd !== 'diagnose') usageError(`unknown command: ${cmd}`)
   if (opts.probe !== null && opts.demo) usageError('--probe cannot be combined with --demo')

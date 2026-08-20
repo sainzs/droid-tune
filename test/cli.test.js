@@ -366,3 +366,65 @@ test('triforce CLI exits 0 (49 offline legs)', () => {
   assert.match(r.stdout, /ok noop #2 -> VERIFIED_FAIL/)
   assert.match(r.stdout, /ok cheat:early-exit #1 -> VERIFIER_ERROR/)
 })
+
+// --- audit ---------------------------------------------------------------
+
+const auditFixtures = path.join(root, 'test', 'fixtures', 'audit', 'packs')
+
+test('audit without a directory exits 2', () => {
+  const r = run(['audit'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /audit requires a directory/)
+})
+
+test('audit on a missing directory exits 2', () => {
+  const r = run(['audit', path.join(root, 'no-such-dir')])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /not found/)
+})
+
+test('audit on a pack with violations exits 1 and names them', () => {
+  const r = run(['audit', path.join(auditFixtures, 't900-demo', 'attempt-1')])
+  assert.equal(r.code, 1)
+  assert.match(r.stdout, /claim-without-coverage\s+1/)
+  assert.match(r.stdout, /NO_SUBMISSION/)
+})
+
+test('audit on a clean pack exits 0', () => {
+  const r = run(['audit', path.join(auditFixtures, 't901-demo', 'attempt-1')])
+  assert.equal(r.code, 0)
+  assert.match(r.stdout, /violations 0/)
+})
+
+test('audit --json emits the machine-readable aggregation', () => {
+  const r = run(['audit', auditFixtures, '--json'])
+  assert.equal(r.code, 1)
+  const parsed = JSON.parse(r.stdout)
+  assert.equal(parsed.mode, 'runs')
+  assert.equal(parsed.packCount, 3)
+  assert.equal(parsed.unauditablePacks, 1)
+  assert.equal(parsed.totals['claim-without-coverage'], 1)
+})
+
+test('audit --window widens the coverage window a claim may reach back through', () => {
+  const target = path.join(auditFixtures, 't900-demo', 'attempt-1')
+  assert.equal(run(['audit', target]).code, 1)
+  const r = run(['audit', target, '--window', '20'])
+  assert.equal(r.code, 0, r.stdout)
+})
+
+test('audit --stall-threshold rejects a non-positive value', () => {
+  const r = run(['audit', auditFixtures, '--stall-threshold', '0'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /must be a positive integer/)
+})
+
+test('audit over the committed demo-pack reports it as unauditable, never as clean', () => {
+  // demo-pack/ was sanitized without transcripts, so there is nothing for the
+  // auditor to read. The report must say so rather than print 24 zero rows
+  // that a reader would mistake for 24 clean sessions.
+  const r = run(['audit', path.join(root, 'demo-pack')])
+  assert.equal(r.code, 0)
+  assert.match(r.stdout, /TOTAL \(0\/24 auditable\)/)
+  assert.match(r.stdout, /24 pack\(s\) carry no transcript\.jsonl/)
+})

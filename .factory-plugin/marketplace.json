@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "droid-tune",
-      "description": "Exposes the droidtune CLI as slash commands: /tune-diagnose, /tune-trial, /tune-report.",
+      "description": "Exposes the droidtune CLI as slash commands: /tune-diagnose, /tune-trial, /tune-report, /tune-audit.",
       "source": "./"
     }
   ]

@@ -109,7 +109,7 @@ of which `droid exec` reports as the same `PROVIDER_ERROR`. See
 droid plugin marketplace add https://github.com/sainzs/droid-tune && droid plugin install droid-tune --scope user
 ```
 
-This exposes `/tune-diagnose`, `/tune-trial`, and `/tune-report`, which wrap the CLI in this repo — no logic duplication.
+This exposes `/tune-diagnose`, `/tune-trial`, `/tune-report`, and `/tune-audit`, which wrap the CLI in this repo — no logic duplication.
 
 ## Requirements
 
@@ -156,8 +156,8 @@ printed, or written into an evidence pack.
 > exist on your machine unless you created it. It still works as one way to
 > set the variables, but it is not a requirement.
 
-Exit codes: `0` clean or `VERIFIED_PASS` · `1` faults or another trial
-outcome · `2` usage error.
+Exit codes: `0` clean, `VERIFIED_PASS`, or no violations · `1` faults, another
+trial outcome, or violations found · `2` usage error.
 
 ## Commands
 
@@ -169,6 +169,7 @@ outcome · `2` usage error.
 | `trial --task <dir>` | Runs one task end-to-end through `droid exec` (isolated temporary repo, frozen tests copied into a fresh grading copy only after the agent commits) and writes a hash-manifested development evidence pack |
 | `baseline --confirm-spend` | Freezes the committed `native-droid-v1` bundle, then runs its six live Droid Core tasks; refuses to start without the confirmation flag |
 | `triforce` | Runs oracle, no-op, and cheat controls for every full-layout task without calling Droid |
+| `audit <dir>` | Counts process-discipline violations in a pack's recorded transcript — offline, no model call |
 
 Diagnose flags: `--probe [model]` · `--demo` · `--limit <n>` · `--json`.
 
@@ -223,6 +224,47 @@ DeepSeek V4 tables, exact zero for the frozen Zen-free table, or observed
 Factory Standard Credits for native Droid. Unknown routes and stale tables fail
 closed. Development packs remain ineligible when any required artifact is
 absent. No transcript, verifier provenance, or pricing snapshot means no claim.
+
+## Process audit
+
+Grading says whether the commit was right. `droidtune audit` says what the
+session *did* on the way there, by scanning the transcript a pack already
+carries — zero model calls, zero network:
+
+```sh
+node bin/droidtune.js audit runs/<tune>/<task>/attempt-N   # one pack
+node bin/droidtune.js audit runs/<tune>                    # per-trial table + totals
+```
+
+| Category | Fires when |
+|---|---|
+| `claim-without-coverage` | assistant text asserts verified/works/done/passes/fixed with no check command in the preceding 8 tool events |
+| `stall` | an identical command is re-run 3 or more times |
+| `re-derivation` | the same file is edited twice with no check command between the edits |
+| `no-test-finish` | the session ran tool calls and never ran a single check command |
+
+Thresholds: `--window <n>`, `--stall-threshold <n>`. `--json` for the raw
+aggregation.
+
+Every detector prefers a false negative. Check-command recognition is
+deliberately generous (running a workspace file through an interpreter counts,
+which is how models actually verify here), claim recognition is narrow and
+drops any sentence carrying intent, hedging, negation, or a report that the
+check failed, thinking blocks are never treated as claims, and consecutive
+edits to one file are read as a single multi-hunk change. A count printed here
+should survive being read line by line against the transcript.
+
+The ship-check idea behind `claim-without-coverage` and `no-test-finish` is
+adapted from the [J-Space Cognition Suite
+V3.6](https://github.com/Tiger3807861189/J-Space-Cognition-Suite-V3.6)
+(Apache-2.0) — its "no claim without running the check" rule, applied after the
+fact to a transcript instead of to a live agent. Attribution is in the
+`lib/audit.js` docstring; no J-Space code is vendored.
+
+> `demo-pack/` was sanitized without transcripts, so `audit demo-pack` reports
+> `0/24 auditable` rather than 24 clean rows. To see the auditor produce
+> findings from a fresh clone, point it at the committed fixture packs:
+> `node bin/droidtune.js audit test/fixtures/audit/packs`.
 
 ## BYOK recipe (`${ENV_VAR}` keys, never plaintext)
 
