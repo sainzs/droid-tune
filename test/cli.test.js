@@ -84,6 +84,21 @@ test('--demo --probe exits 2 (probe needs live droid)', () => {
   assert.equal(r.code, 2)
 })
 
+test('trial without --model refuses (no silent paid default) and exits 2', () => {
+  const r = run(['trial', '--task', 'tasks/t001-greet-script'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /requires --model/)
+  // Must not leak into "pick whatever is first in settings" behavior — the
+  // error should point at known-free routes, never silently choose one.
+  assert.match(r.stderr, /hy3-free/)
+})
+
+test('trial without --task exits 2 before any model/spend concern', () => {
+  const r = run(['trial'])
+  assert.equal(r.code, 2)
+  assert.match(r.stderr, /requires --task/)
+})
+
 test('runTriforce: all-expected verdicts → ok:true with 7 passing legs', () => {
   const verdicts = {
     oracle: 'VERIFIED_PASS',

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -30,8 +30,10 @@ diagnose flags:
 
 trial flags:
   --task <dir>           Task directory (required; e.g. tasks/t001-greet-script)
-  --model <id>           Custom-model id or unique substring (default: first Z.AI
-                         anthropic entry in settings; spends your BYOK credits)
+  --model <id>           Custom-model id or unique substring (REQUIRED — no
+                         default; spends your BYOK credits/plan. Known-free
+                         routes: hy3-free, nemotron-3.5-lightning-free,
+                         laguna-s-2.1-free, nemotron-3-ultra-free)
   --tune <name>          Tune name for the pack path (default ad-hoc)
   --attempt <n>          Attempt number (default 1)
   --auto <level>         Autonomy: low|medium|high (default high)
@@ -132,26 +134,31 @@ function defaultTrialPaths (opts) {
   }
 }
 
-function defaultTrialModel (configPath) {
-  let cfg = null
-  try {
-    cfg = JSON.parse(readFileSync(configPath, 'utf8'))
-  } catch {
-    throw new Error(`cannot read config to pick a default model: ${configPath}`)
-  }
-  const models = Array.isArray(cfg.customModels) ? cfg.customModels : []
-  const pick = models.find(m => m.provider === 'anthropic' && /z\.ai/.test(m.baseUrl ?? '')) ?? models[0]
-  if (!pick) throw new Error('no customModels configured — pass --model explicitly')
-  return pick.id ?? pick.model
-}
+// Known-free BYOK routes as of 2026-08-19 (verified working in this repo's
+// own flake checks). Offered only as a suggestion in error/help text — never
+// auto-selected. See docs/m4-flake-check-2026-08.md.
+const KNOWN_FREE_ROUTES = ['hy3-free', 'nemotron-3.5-lightning-free', 'laguna-s-2.1-free', 'nemotron-3-ultra-free']
 
 async function cmdTrial (opts) {
   if (!opts.task) usageError('trial requires --task <dir>')
   if (opts.auto !== undefined && !['low', 'medium', 'high'].includes(opts.auto)) {
     usageError('--auto must be low, medium, or high')
   }
+  // Money bug guard: `trial` runs a LIVE droid exec that spends whatever BYOK
+  // route it is given. There is no safe default model to fall back to — a
+  // repo's first customModels entry may be a paid plan (e.g. a Z.AI Coding
+  // Plan seat) — so refuse outright rather than silently picking one. The
+  // operator must name a model explicitly; this is the confirmation gate.
+  if (!opts.model) {
+    usageError(
+      `trial requires --model <id> — there is no default (an implicit default risks ` +
+      `spending a paid plan). Known-free BYOK routes as of 2026-08-19 (verify against ` +
+      `your own ~/.factory/settings.json): ${KNOWN_FREE_ROUTES.join(', ')}. ` +
+      `Run 'droidtune diagnose' to see your configured customModels.`
+    )
+  }
   const paths = defaultTrialPaths(opts)
-  const model = opts.model ?? defaultTrialModel(paths.configPath)
+  const model = opts.model
   const result = await runTrial({
     taskDir: opts.task,
     model,
