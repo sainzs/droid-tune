@@ -1,0 +1,8 @@
+{"date":"2026-08-20","ts":"2026-08-20T09:06:20.136Z","route":"hy3-free","status":"OK","httpStatus":200,"latencyMs":2081,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-20","ts":"2026-08-20T09:06:20.136Z","route":"nemotron-3.5-lightning-free","status":"OK","httpStatus":200,"latencyMs":546,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-20","ts":"2026-08-20T09:06:20.136Z","route":"laguna-s-2.1-free","status":"OK","httpStatus":200,"latencyMs":626,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-20","ts":"2026-08-20T09:06:20.136Z","route":"nemotron-3-ultra-free","status":"OK","httpStatus":200,"latencyMs":3218,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-20","ts":"2026-08-20T09:06:20.136Z","route":"deepseek-v4-flash-free","status":"RATE_LIMITED","httpStatus":429,"latencyMs":200,"detail":"Error from provider (Console): Rate limit exceeded. Please try again later.","probe":"chat.completions"}
+{"date":"2026-08-20","ts":"2026-08-20T09:06:20.136Z","route":"glm-5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":75,"detail":"Model glm-5-free is not supported","probe":"chat.completions"}
+{"date":"2026-08-20","ts":"2026-08-20T09:06:20.136Z","route":"kimi-k2.5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":56,"detail":"Model kimi-k2.5-free is not supported","probe":"chat.completions"}
+{"date":"2026-08-20","ts":"2026-08-20T09:06:20.136Z","route":"mimo-v2.5-free","status":"RATE_LIMITED","httpStatus":429,"latencyMs":169,"detail":"Error from provider (Console): Rate limit exceeded. Please try again later.","probe":"chat.completions"}

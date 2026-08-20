@@ -5,7 +5,8 @@ import path from 'node:path'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import {
   FREE_ROUTES, STATUSES, appendObservations, classifyProbe, makeObservation,
-  readObservations, redactSecrets, renderWeather, summarize
+  probeBody, probeRoute, probeRoutes, readObservations, redactSecrets,
+  renderWeather, summarize
 } from '../lib/weather.js'
 
 const tmp = () => mkdtempSync(path.join(os.tmpdir(), 'droidtune-weather-'))
@@ -223,4 +224,92 @@ test('rendering is a pure function of the data — same input, same bytes', () =
   const once = renderWeather(summarize(obs, { routes: FREE_ROUTES }))
   const twice = renderWeather(summarize(obs, { routes: FREE_ROUTES }))
   assert.equal(once, twice)
+})
+
+// --- transport (mocked) ---------------------------------------------------
+// A fetch stand-in that answers from a script of recorded responses and
+// records exactly what it was called with.
+function mockFetch (script) {
+  const calls = []
+  const impl = async (url, init) => {
+    calls.push({ url, init })
+    const next = script[calls.length - 1]
+    if (next === undefined) throw new Error(`unexpected extra request #${calls.length}`)
+    if (next.throw) throw next.throw
+    return { status: next.status, text: async () => next.body ?? '' }
+  }
+  impl.calls = calls
+  return impl
+}
+
+test('probeRoute sends exactly one POST with the documented body', async () => {
+  const fetchImpl = mockFetch([{ status: 200, body: '{"choices":[{"message":{"content":"pong"}}]}' }])
+  const r = await probeRoute('hy3-free', { key: 'sk-test-key-value-1234', fetchImpl })
+
+  assert.equal(fetchImpl.calls.length, 1, 'exactly one request per route')
+  const { url, init } = fetchImpl.calls[0]
+  assert.equal(url, 'https://opencode.ai/zen/v1/chat/completions')
+  assert.equal(init.method, 'POST')
+  assert.deepEqual(JSON.parse(init.body), probeBody('hy3-free'))
+  assert.deepEqual(JSON.parse(init.body), {
+    model: 'hy3-free',
+    messages: [{ role: 'user', content: 'ping' }],
+    max_tokens: 8,
+    temperature: 0,
+    stream: false
+  })
+  assert.equal(r.status, 'OK')
+  assert.equal(r.route, 'hy3-free')
+  assert.equal(r.httpStatus, 200)
+  assert.equal(typeof r.latencyMs, 'number')
+})
+
+test('probeRoute sends the key as a bearer token and never returns it', async () => {
+  const key = 'sk-secret-abcdefghijklmnop1234567890'
+  const fetchImpl = mockFetch([{ status: 401, body: JSON.stringify({ error: { message: `key ${key} is invalid` } }) }])
+  const r = await probeRoute('hy3-free', { key, fetchImpl })
+  assert.equal(fetchImpl.calls[0].init.headers.Authorization, `Bearer ${key}`)
+  assert.equal(r.status, 'AUTH')
+  assert.ok(!JSON.stringify(r).includes(key), `probe result leaked the key: ${JSON.stringify(r)}`)
+})
+
+test('a transport failure becomes a classified observation, never a thrown error', async () => {
+  const fetchImpl = mockFetch([{ throw: new Error('fetch failed: ECONNRESET') }])
+  const r = await probeRoute('glm-5-free', { key: 'k'.repeat(20), fetchImpl })
+  assert.equal(r.status, 'ERROR')
+  assert.equal(r.httpStatus, null)
+})
+
+test('an aborted probe is recorded as TIMEOUT rather than crashing the run', async () => {
+  const fetchImpl = mockFetch([{ throw: Object.assign(new Error('aborted'), { name: 'AbortError' }) }])
+  const r = await probeRoute('kimi-k2.5-free', { key: 'k'.repeat(20), fetchImpl, timeoutMs: 5 })
+  assert.equal(r.status, 'TIMEOUT')
+})
+
+test('probeRoutes issues exactly one request per route, in order, and never retries', async () => {
+  const script = [
+    { status: 200, body: '{"choices":[{}]}' },
+    { status: 429, body: 'slow down' },
+    { throw: new Error('boom') }
+  ]
+  const fetchImpl = mockFetch(script)
+  const seen = []
+  const results = await probeRoutes(['a-free', 'b-free', 'c-free'], {
+    key: 'k'.repeat(20), fetchImpl, onResult: (r) => seen.push(r.route)
+  })
+  assert.equal(fetchImpl.calls.length, 3, 'one request per route, no retries')
+  assert.deepEqual(results.map(r => r.route), ['a-free', 'b-free', 'c-free'])
+  assert.deepEqual(results.map(r => r.status), ['OK', 'RATE_LIMITED', 'ERROR'])
+  assert.deepEqual(seen, ['a-free', 'b-free', 'c-free'], 'sequential, in the given order')
+  assert.deepEqual(fetchImpl.calls.map(c => JSON.parse(c.init.body).model), ['a-free', 'b-free', 'c-free'])
+})
+
+test('a total outage still yields one observation per route — the outage is the data', async () => {
+  const fetchImpl = mockFetch(Array.from({ length: 8 }, () => ({ throw: new Error('network is unreachable') })))
+  const results = await probeRoutes(FREE_ROUTES, { key: 'k'.repeat(20), fetchImpl })
+  assert.equal(results.length, FREE_ROUTES.length)
+  assert.ok(results.every(r => r.status === 'ERROR'))
+  const s = summarize(results.map(r => makeObservation({ route: r.route, status: r.status, at: '2026-08-20T06:00:00.000Z' })))
+  assert.equal(s.up, 0)
+  assert.equal(s.total, FREE_ROUTES.length)
 })

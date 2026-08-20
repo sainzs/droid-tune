@@ -1,0 +1,75 @@
+name: route-weather
+
+# Daily free-route weather. One minimal chat-completion request per configured
+# free Zen route, classified, appended to weather/route-status.jsonl, rendered
+# into weather/README.md and weather/badge.json, and committed.
+#
+# The point is a dated series nobody has to trust, so the job records failure
+# as data: a rate-limited, unroutable, or unreachable route produces an
+# observation exactly like a healthy one does. The only condition that aborts
+# without writing is a missing credential, which is a fact about the runner
+# rather than about the routes.
+on:
+  schedule:
+    # 06:17 UTC. Off the hour on purpose — the top of the hour is the busiest
+    # slot on GitHub's scheduler and the one most likely to be delayed.
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+# Only the commit step needs write access, but permissions are job-scoped.
+permissions:
+  contents: write
+
+# Two overlapping runs would each append a row for the same day and race on the
+# push. Serialise, and never cancel a run that may already have probed.
+concurrency:
+  group: route-weather
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    # A fork has no OPENCODE_ZEN_KEY, so a scheduled run there would fail every
+    # morning for a reason the fork's owner cannot fix.
+    if: github.repository == 'sainzs/droid-tune'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      # The key is handed to the process as an environment variable and is
+      # never interpolated into a shell command, so it cannot reach the public
+      # build log. scripts/route-weather.js does not log headers, and
+      # lib/weather.js scrubs the key (and anything token-shaped) out of every
+      # detail string before it can be written to disk.
+      - name: Probe free routes
+        env:
+          OPENCODE_ZEN_KEY: ${{ secrets.OPENCODE_ZEN_KEY }}
+        run: node scripts/route-weather.js --probe --timeout-ms 25000
+
+      # Belt and braces: refuse to commit anything that looks like a
+      # credential, even though redaction happens upstream. A committed key is
+      # not recoverable by deleting the file afterwards.
+      - name: Refuse to commit anything credential-shaped
+        run: |
+          if grep -rIqE 'sk-[A-Za-z0-9_-]{8,}|[Bb]earer +[A-Za-z0-9._-]{8,}|[A-Za-z0-9_-]{32,}' weather/; then
+            echo "::error::a credential-shaped string reached weather/ — refusing to commit"
+            exit 1
+          fi
+
+      - name: Commit the observation
+        run: |
+          if [ -z "$(git status --porcelain weather/)" ]; then
+            echo "no change to weather/ — nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weather/
+          # [skip ci] because this is a data-only commit: running the full gate
+          # on it would prove nothing the previous run did not. The generated
+          # files are validated against the series by test/route-weather.test.js
+          # on the next real push, so they cannot drift unnoticed.
+          git commit -m "weather: free-route status $(date -u +%Y-%m-%d) [skip ci]"
+          git push
