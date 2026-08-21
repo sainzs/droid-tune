@@ -369,9 +369,10 @@ h2 {
 
 .stat-panel-title {
   font-family: var(--mono);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--text-dim);
   margin: 0 0 1rem;
 }
@@ -601,6 +602,72 @@ h2 {
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   padding: 0.9rem 1.1rem;
+}
+
+/* Polish */
+
+h1,
+h2 {
+  text-wrap: balance;
+}
+
+.pack-list li,
+.number-card {
+  transition: border-color 140ms ease;
+}
+
+.pack-list li:hover,
+.number-card:hover {
+  border-color: var(--border-strong);
+}
+
+/* The null result is the flagship claim — give its table the most weight
+   on the page: heavier top rule, strong figures. */
+.null-table-wrap {
+  border-top-width: 3px;
+}
+
+.null-table td {
+  font-weight: 600;
+}
+
+/* 404 */
+
+.not-found {
+  border-top: 0;
+  padding-block: 6rem;
+}
+
+/* Print */
+
+@media print {
+  :root {
+    --bg: #ffffff;
+    --bg-raised: #ffffff;
+    --bg-sunken: #f5f5f5;
+    --border: #b8b3b0;
+    --border-strong: #8a8380;
+    --text: #1f1d1c;
+    --text-strong: #020202;
+    --text-dim: #4d4947;
+    --accent-text: #d15010;
+  }
+
+  .site-header,
+  .hero-actions,
+  .hero-figure,
+  .skip-link {
+    display: none;
+  }
+
+  body {
+    background: #ffffff;
+    color: #1f1d1c;
+  }
+
+  .section {
+    padding-block: 1.5rem;
+  }
 }
 
 /* Responsive */

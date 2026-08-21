@@ -6,17 +6,17 @@
   <title>droid-tune — verification console</title>
   <style>
     :root {
-      --bg: #080b0e;
-      --panel: #0d1115;
-      --bar: #141a1f;
-      --border: #263139;
-      --ink: #f0f5f2;
-      --muted: #8b989b;
-      --faint: #5a686d;
-      --green: #62f6bc;
-      --green-dim: #2cb782;
-      --amber: #f3c66b;
-      --red: #ff8c83;
+      --bg: #020202;
+      --panel: #101010;
+      --bar: #1f1d1c;
+      --border: #2e2c2b;
+      --ink: #f5f5f5;
+      --muted: #a49d9a;
+      --faint: #5c5855;
+      --accent: #ef6f2e;
+      --accent-dim: #d15010;
+      --amber: #f0a330;
+      --red: #e54048;
     }
 
     * { box-sizing: border-box; }
@@ -37,7 +37,7 @@
       -webkit-font-smoothing: antialiased;
       text-rendering: geometricPrecision;
       background:
-        radial-gradient(ellipse at 75% 10%, rgba(56, 117, 100, .11), transparent 42%),
+        radial-gradient(ellipse at 75% 10%, rgba(239, 111, 46, .08), transparent 42%),
         linear-gradient(135deg, rgba(255,255,255,.018) 1px, transparent 1px),
         var(--bg);
       background-size: auto, 28px 28px, auto;
@@ -69,16 +69,16 @@
       align-content: center;
       gap: 3px;
       padding: 5px 4px;
-      border: 1px solid rgba(98, 246, 188, .38);
+      border: 1px solid rgba(239, 111, 46, .38);
       border-radius: 7px;
-      background: rgba(98, 246, 188, .07);
+      background: rgba(239, 111, 46, .07);
     }
 
     .mark i {
       display: block;
       height: 2px;
       border-radius: 2px;
-      background: var(--green);
+      background: var(--accent);
     }
 
     .mark i:nth-child(2) { width: 75%; opacity: .76; }
@@ -111,8 +111,8 @@
       width: 7px;
       height: 7px;
       border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 13px rgba(98, 246, 188, .78);
+      background: var(--accent);
+      box-shadow: 0 0 13px rgba(239, 111, 46, .78);
     }
 
     .terminal {
@@ -142,9 +142,9 @@
       border-radius: 50%;
     }
 
-    .dot.red { background: #ff625b; }
-    .dot.yellow { background: #f6c653; }
-    .dot.green { background: #3bd47b; }
+    .dot.red { background: #e54048; }
+    .dot.yellow { background: #f0a330; }
+    .dot.green { background: #6fab78; }
 
     .terminal-title {
       margin-left: 10px;
@@ -155,7 +155,7 @@
 
     .terminal-stage {
       margin-left: auto;
-      color: var(--green-dim);
+      color: var(--accent-dim);
       font-size: 10px;
       letter-spacing: 1px;
       text-transform: uppercase;
@@ -183,15 +183,15 @@
       overflow-wrap: anywhere;
     }
 
-    .prompt { color: var(--green); font-weight: 700; }
+    .prompt { color: var(--accent); font-weight: 700; }
     .command-text { color: var(--ink); }
     .section { color: var(--ink); font-weight: 650; }
     .muted { color: var(--muted); }
     .fault { color: var(--amber); }
-    .verdict { margin-top: 7px; color: var(--green); font-weight: 650; }
-    .pass { color: var(--green); font-weight: 700; }
+    .verdict { margin-top: 7px; color: var(--accent); font-weight: 650; }
+    .pass { color: var(--accent); font-weight: 700; }
     .matrix { margin-top: 8px; font-size: 12.1px; line-height: 1.58; letter-spacing: -.15px; white-space: pre; }
-    .matrix .pass { color: var(--green); }
+    .matrix .pass { color: var(--accent); }
     .matrix .timeout { color: var(--amber); }
     .matrix .nosub { color: var(--red); }
     .matrix .code { color: var(--ink); }
@@ -204,7 +204,7 @@
       margin-left: 2px;
       vertical-align: -3px;
       border-radius: 1px;
-      background: var(--green);
+      background: var(--accent);
     }
 
     .cursor.off { opacity: .2; }
