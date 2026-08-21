@@ -133,8 +133,8 @@
           <p>
             <code>dt-v1-ledger-lite-nosub</code> was registered <em>before</em> running:
             a frozen decision rule, a pinned tune hash, a required effect size. The
-            hypothesis &mdash; a ~390-token tune file would cut the NO_SUBMISSION rate by
-            at least 25 percentage points.
+            hypothesis &mdash; a 1,721-byte tune file, pinned by hash in the claim,
+            would cut the NO_SUBMISSION rate by at least 25 percentage points.
           </p>
           <p>
             80 trials later (2 arms &times; 4 routes &times; 10 attempts), the decision
@@ -231,8 +231,10 @@ npm test</code></pre>
       </div>
       <p class="section-lede">
         Running trials against models requires your own credentials; free routes are
-        probed daily and the results are committed as data. The demo pack and every
-        published number regenerate offline, with no credentials and no network.
+        probed daily and the results are committed as data. The demo pack regenerates
+        offline, with no credentials and no network &mdash; that is the number a
+        stranger can check without spending anything. The live-route figures come from
+        trial transcripts that are not committed, so they are reported, not reproducible.
       </p>
     </section>
 
