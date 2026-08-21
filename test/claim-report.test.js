@@ -2,14 +2,19 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import os from 'node:os'
 import path from 'node:path'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import {
+  CLOSED_STATUS,
+  CLOSURE_WRITABLE_KEYS,
   alnumRouteKey,
   analyzeClaim,
+  assertRegisteredFieldsUnchanged,
   buildRouteIndex,
   classifyOutcome,
+  closeClaim,
+  conclusionsAgree,
   evaluateDecision,
   fisherExactTwoSided,
   loadClaim,
@@ -1002,9 +1007,253 @@ test('CLI drops an over-capped route evidenced only on disk and exits 1', (t) =>
   assert.match(r.stdout, /ROUTE DROPPED — replacement cap reached/)
 })
 
+// ---------------------------------------------------------------------------
+// Closure (--close): the one write this tool performs
+// ---------------------------------------------------------------------------
+
+const readClaimFile = (fixture) => JSON.parse(readFileSync(fixture.claimPath, 'utf8'))
+
+// n=10 single route: a 50pp drop with Fisher p = 0.033 and an equal
+// VERIFIED_PASS rate, so all three registered conditions hold on complete
+// evidence. (n=2 cannot reach p < 0.05 at all.)
+function completeSupported (t) {
+  const fixture = makeFixture(t, { n: 10 })
+  writeLog(fixture, baseLines(fixture, seqs1(
+    [SUB, SUB, SUB, SUB, SUB, PASS, PASS, PASS, PASS, PASS],
+    [PASS, PASS, PASS, PASS, PASS, FAIL, FAIL, FAIL, FAIL, FAIL]
+  )))
+  return fixture
+}
+
+// Same shape, but neither arm ever submits: complete evidence, no drop.
+function completeNotSupported (t) {
+  const fixture = makeFixture(t, { n: 10 })
+  writeLog(fixture, baseLines(fixture, seqs1(Array(10).fill(SUB), Array(10).fill(SUB))))
+  return fixture
+}
+
+test('closeClaim moves a preregistered claim to reported with a derived conclusion', (t) => {
+  const fixture = completeSupported(t)
+  const result = analyze(fixture)
+  assert.equal(result.state, 'complete')
+  const closure = closeClaim({ claimPath: fixture.claimPath, result, now: new Date('2026-08-21T00:00:00.000Z') })
+  assert.equal(closure.action, 'closed')
+  assert.equal(closure.wrote, true)
+
+  const onDisk = readClaimFile(fixture)
+  assert.equal(onDisk.status, CLOSED_STATUS)
+  assert.equal(onDisk.conclusion.verdict, 'supported')
+  assert.equal(onDisk.conclusion.supported, true)
+  assert.equal(onDisk.conclusion.state, 'complete')
+  assert.equal(onDisk.conclusion.closedAt, '2026-08-21T00:00:00.000Z')
+  assert.equal(onDisk.conclusion.closedBy, 'scripts/claim-report.js --close')
+  // The conclusion cites evidence by repo-relative path and reports what it
+  // actually analysed, at the n the claim registered.
+  assert.equal(onDisk.conclusion.evidence.sweepLog, `runs/${fixture.claim.id}/sweep-log.jsonl`)
+  assert.deepEqual(onDisk.conclusion.evidence.pooledRoutes, ['hy3-free'])
+  assert.deepEqual(onDisk.conclusion.evidence.droppedRoutes, [])
+  assert.equal(onDisk.conclusion.evidence.nPerArmPerRoute, fixture.claim.design.nPerArmPerRoute)
+  assert.equal(onDisk.conclusion.evidence.baseTrials, 20)
+  assert.ok(onDisk.conclusion.conditions.every(c => c.met))
+})
+
+test('closure leaves every registered field byte-for-byte identical', (t) => {
+  const fixture = completeNotSupported(t)
+  const before = readClaimFile(fixture)
+  closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture) })
+  const after = readClaimFile(fixture)
+  for (const key of Object.keys(before)) {
+    if (CLOSURE_WRITABLE_KEYS.includes(key)) continue
+    assert.equal(JSON.stringify(after[key]), JSON.stringify(before[key]), `closure modified registered field ${key}`)
+  }
+  // Exactly two things changed: the status word and the appended conclusion.
+  assert.deepEqual(
+    Object.keys(after).filter(k => !Object.hasOwn(before, k)),
+    ['conclusion']
+  )
+  assert.equal(after.status, CLOSED_STATUS)
+  assert.equal(before.status, 'preregistered')
+})
+
+test('closure records a not-supported verdict just as readily as a supported one', (t) => {
+  const fixture = completeNotSupported(t)
+  const closure = closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture) })
+  assert.equal(closure.action, 'closed')
+  assert.equal(closure.conclusion.verdict, 'not-supported')
+  assert.equal(closure.conclusion.supported, false)
+})
+
+test('re-closing the same evidence is a no-op, not a rewrite', (t) => {
+  const fixture = completeSupported(t)
+  closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture), now: new Date('2026-08-21T00:00:00.000Z') })
+  const firstBytes = readFileSync(fixture.claimPath, 'utf8')
+  // A later clock must not produce a second closedAt.
+  const again = closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture), now: new Date('2026-09-01T00:00:00.000Z') })
+  assert.equal(again.action, 'unchanged')
+  assert.equal(again.wrote, false)
+  assert.equal(readFileSync(fixture.claimPath, 'utf8'), firstBytes, 'an idempotent re-close must not touch the file')
+})
+
+test('closure refuses incomplete, aborted, and no-evidence sweeps without writing', (t) => {
+  const cases = [
+    ['incomplete', (fixture) => {
+      writeLog(fixture, [logLine({ route: 'hy3-free', arm: 'no-tune', attempt: 1, outcome: SUB })])
+    }],
+    ['aborted', (fixture) => {
+      const lines = baseLines(fixture, seqs1([SUB, SUB], [PASS, PASS]))
+      lines.push(logLine({ route: 'hy3-free', arm: null, attempt: null, outcome: 'SWEEP_ABORTED' }))
+      writeLog(fixture, lines)
+    }],
+    ['no-evidence', () => {}]
+  ]
+  for (const [name, seed] of cases) {
+    const fixture = makeFixture(t, { n: 2 })
+    seed(fixture)
+    const before = readFileSync(fixture.claimPath, 'utf8')
+    const closure = closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture) })
+    assert.equal(closure.action, 'refused', `${name} must be refused`)
+    assert.equal(closure.refusal.code, 'evidence')
+    assert.equal(closure.wrote, false)
+    assert.equal(readFileSync(fixture.claimPath, 'utf8'), before, `${name} must leave the claim untouched`)
+  }
+})
+
+test('closure refuses a sweep that dropped a registered route, however clean the survivor', (t) => {
+  const routes = ['r1', 'r2']
+  const fixture = makeFixture(t, { routes, n: 2, models: routes.map(id => ({ id, model: id })) })
+  const lines = baseLines(fixture, {
+    r1: { 'no-tune': [SUB, SUB], 'ledger-lite': [PASS, PASS] },
+    r2: { 'no-tune': [SUB, SUB], 'ledger-lite': [PASS, PASS] }
+  })
+  lines.push(logLine({ route: 'r2', arm: null, attempt: null, outcome: 'ROUTE_DROPPED' }))
+  writeLog(fixture, lines)
+  const before = readFileSync(fixture.claimPath, 'utf8')
+  const closure = closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture) })
+  assert.equal(closure.action, 'refused')
+  assert.equal(closure.refusal.code, 'evidence')
+  assert.match(closure.refusal.message, /every registered route intact/)
+  assert.equal(readFileSync(fixture.claimPath, 'utf8'), before)
+})
+
+test('closure refuses a claim that is not preregistered', (t) => {
+  const fixture = completeSupported(t)
+  writeFileSync(fixture.claimPath, JSON.stringify({ ...fixture.claim, status: 'withdrawn' }))
+  const closure = closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture) })
+  assert.equal(closure.action, 'refused')
+  assert.equal(closure.refusal.code, 'status')
+  assert.match(closure.refusal.message, /only a "preregistered" claim can be closed/)
+})
+
+test('closure refuses inconsistent lifecycle states rather than repairing them', (t) => {
+  // A conclusion on a still-open claim, and a closed status with no conclusion:
+  // both mean someone hand-edited the file, and neither is this tool's to fix.
+  const preWithConclusion = completeSupported(t)
+  writeFileSync(preWithConclusion.claimPath, JSON.stringify({
+    ...preWithConclusion.claim, conclusion: { verdict: 'supported' }
+  }))
+  let closure = closeClaim({ claimPath: preWithConclusion.claimPath, result: analyze(preWithConclusion) })
+  assert.equal(closure.refusal.code, 'lifecycle')
+  assert.match(closure.refusal.message, /still preregistered but already carries a conclusion/)
+
+  const closedNoConclusion = completeSupported(t)
+  writeFileSync(closedNoConclusion.claimPath, JSON.stringify({ ...closedNoConclusion.claim, status: CLOSED_STATUS }))
+  closure = closeClaim({ claimPath: closedNoConclusion.claimPath, result: analyze(closedNoConclusion) })
+  assert.equal(closure.refusal.code, 'lifecycle')
+  assert.match(closure.refusal.message, /carries no conclusion/)
+
+  const laundered = completeSupported(t)
+  writeFileSync(laundered.claimPath, JSON.stringify({ ...laundered.claim, verdict: 'supported' }))
+  closure = closeClaim({ claimPath: laundered.claimPath, result: analyze(laundered) })
+  assert.equal(closure.refusal.code, 'lifecycle')
+  assert.match(closure.refusal.message, /outside the conclusion block/)
+})
+
+test('closure refuses to overwrite a published conclusion when the evidence changed', (t) => {
+  const fixture = completeSupported(t)
+  closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture) })
+  const published = readFileSync(fixture.claimPath, 'utf8')
+  // The packs now say something different from what was published.
+  writeLog(fixture, baseLines(fixture, seqs1([SUB, SUB], [SUB, SUB])))
+  const closure = closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture) })
+  assert.equal(closure.action, 'refused')
+  assert.equal(closure.refusal.code, 'conflict')
+  assert.equal(readFileSync(fixture.claimPath, 'utf8'), published, 'a published conclusion is never overwritten')
+
+  // The same holds when the evidence regressed to incomplete.
+  writeLog(fixture, [logLine({ route: 'hy3-free', arm: 'no-tune', attempt: 1, outcome: SUB })])
+  const stale = closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture) })
+  assert.equal(stale.refusal.code, 'conflict')
+  assert.equal(readFileSync(fixture.claimPath, 'utf8'), published)
+})
+
+test('conclusionsAgree ignores only who closed the claim and when', () => {
+  const a = { verdict: 'supported', supported: true, closedAt: 'x', closedBy: 'y' }
+  assert.equal(conclusionsAgree(a, { ...a, closedAt: 'later', closedBy: 'someone else' }), true)
+  assert.equal(conclusionsAgree(a, { ...a, supported: false }), false)
+  assert.equal(conclusionsAgree(a, undefined), false)
+})
+
+test('assertRegisteredFieldsUnchanged catches any edit outside status and conclusion', () => {
+  const before = { id: 'c', status: 'preregistered', routes: ['r1'], design: { nPerArmPerRoute: 2 } }
+  const ok = { ...before, status: CLOSED_STATUS, conclusion: { verdict: 'supported' } }
+  assert.doesNotThrow(() => assertRegisteredFieldsUnchanged(before, ok))
+  assert.throws(() => assertRegisteredFieldsUnchanged(before, { ...ok, routes: ['r1', 'r2'] }), /modify registered field "routes"/)
+  assert.throws(() => assertRegisteredFieldsUnchanged(before, { ...ok, design: { nPerArmPerRoute: 3 } }), /modify registered field "design"/)
+  const dropped = { ...ok }
+  delete dropped.routes
+  assert.throws(() => assertRegisteredFieldsUnchanged(before, dropped), /dropped registered field "routes"/)
+  assert.throws(() => assertRegisteredFieldsUnchanged(before, { ...ok, notes: 'hi' }), /added unregistered field "notes"/)
+  assert.deepEqual(CLOSURE_WRITABLE_KEYS, ['status', 'conclusion'])
+})
+
+test('CLI --close closes a supported claim, reports it, and stays exit 0', (t) => {
+  const fixture = completeSupported(t)
+  const r = run(['--claim', fixture.claimPath, '--runs-dir', fixture.runsDir, '--config', fixture.configPath, '--close'])
+  assert.equal(r.code, 0, r.stderr)
+  assert.match(r.stdout, /## Closure \(--close\)/)
+  assert.match(r.stdout, /status\s+preregistered -> reported/)
+  assert.equal(readClaimFile(fixture).status, CLOSED_STATUS)
+  // --close is opt-in: an ordinary report never writes.
+  const other = completeSupported(t)
+  run(['--claim', other.claimPath, '--runs-dir', other.runsDir, '--config', other.configPath])
+  assert.equal(readClaimFile(other).status, 'preregistered')
+})
+
+test('CLI --close keeps exit 1 for a closed NOT SUPPORTED claim and exposes the closure as JSON', (t) => {
+  const fixture = completeNotSupported(t)
+  const r = run(['--claim', fixture.claimPath, '--runs-dir', fixture.runsDir, '--config', fixture.configPath, '--close', '--json'])
+  assert.equal(r.code, 1, 'the exit code reports the finding, not the bookkeeping')
+  const parsed = JSON.parse(r.stdout)
+  assert.equal(parsed.closure.action, 'closed')
+  assert.equal(parsed.closure.conclusion.verdict, 'not-supported')
+  assert.equal(readClaimFile(fixture).status, CLOSED_STATUS)
+})
+
+test('CLI --close on incomplete evidence exits 1, says why on stderr, and writes nothing', (t) => {
+  const fixture = makeFixture(t, { n: 2 })
+  writeLog(fixture, [logLine({ route: 'hy3-free', arm: 'no-tune', attempt: 1, outcome: SUB })])
+  const before = readFileSync(fixture.claimPath, 'utf8')
+  const r = run(['--claim', fixture.claimPath, '--runs-dir', fixture.runsDir, '--config', fixture.configPath, '--close'])
+  assert.equal(r.code, 1)
+  assert.match(r.stderr, /refusing to close/)
+  assert.match(r.stdout, /REFUSED \(evidence\)/)
+  assert.equal(readFileSync(fixture.claimPath, 'utf8'), before)
+})
+
+test('a closed claim is no longer sweepable', async (t) => {
+  // Not a coincidence to be maintained by hand: closure reuses the registry's
+  // "reported" status, and lib/sweep.js already refuses anything not
+  // preregistered — so concluding a claim retires it from further sweeping.
+  const { loadSweepClaim } = await import('../lib/sweep.js')
+  const fixture = completeSupported(t)
+  closeClaim({ claimPath: fixture.claimPath, result: analyze(fixture) })
+  assert.throws(() => loadSweepClaim(fixture.claimPath), /preregistered/)
+})
+
 test('parseArgs maps flags and alias without side effects', () => {
   const opts = parseArgs(['--claim', 'x.json', '--runs-dir', 'r', '--config', 'c', '--json'])
-  assert.deepEqual(opts, { claim: 'x.json', runsDir: 'r', config: 'c', json: true, help: false })
+  assert.deepEqual(opts, { claim: 'x.json', runsDir: 'r', config: 'c', json: true, close: false, help: false })
+  assert.equal(parseArgs(['--close']).close, true)
   assert.equal(parseArgs(['-h']).help, true)
   assert.equal(parseArgs(['dt-v1-ledger-lite-nosub']).claim, 'dt-v1-ledger-lite-nosub')
   assert.equal(parseArgs(['--claim', 'a.json', 'b.json']).claim, 'a.json', '--claim beats a positional')

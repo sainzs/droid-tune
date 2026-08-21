@@ -28,6 +28,15 @@
 //   8. primaryMetric / decisionRule — non-empty strings
 //   9. exclusionRule — when present: non-empty string
 //  10. registeredAt — parses as a date
+//  11. lifecycle — status and the `conclusion` block agree: a preregistered or
+//                 running claim carries no conclusion and no top-level result
+//                 field; a reported claim carries a conclusion whose verdict,
+//                 supported flag, evidence state, and closedAt are well formed
+//                 and whose pooled routes are a subset of the registered
+//                 routes at the registered n. This is the gate that keeps a
+//                 preregistration from being laundered into a finding by hand:
+//                 either the file is a promise with no result, or it is a
+//                 closed claim whose result is internally consistent.
 //
 // Usage:
 //   node scripts/check-claim.js                    # every claims/*.json
@@ -72,6 +81,73 @@ if (files.length === 0) {
 const idFor = (file) => path.basename(file).replace(/\.json$/, '')
 const isHex64 = (s) => typeof s === 'string' && /^[0-9a-f]{64}$/.test(s)
 
+// A claim file is either a promise or a concluded promise; it is never a
+// finding that was typed in next to one. `conclusion` is the only place a
+// result may live, and only when the status says the claim is closed.
+const RESULT_KEYS_OUTSIDE_CONCLUSION = ['result', 'results', 'verdict', 'findings']
+const CONCLUDED_STATUS = 'reported'
+const OPEN_STATUSES = new Set(['preregistered', 'running'])
+
+function checkLifecycle (claim, fail) {
+  const stray = RESULT_KEYS_OUTSIDE_CONCLUSION.filter(k => Object.hasOwn(claim, k))
+  if (stray.length > 0) {
+    fail('lifecycle', `result field(s) ${stray.join(', ')} must live inside the conclusion block, not at the top level`)
+  }
+
+  const c = claim.conclusion
+  if (OPEN_STATUSES.has(claim.status)) {
+    if (c !== undefined) {
+      fail('lifecycle', `status "${claim.status}" must not carry a conclusion — close the claim to publish one`)
+    }
+    return
+  }
+  if (claim.status !== CONCLUDED_STATUS) return // withdrawn: conclusion optional
+  if (c === undefined) {
+    fail('lifecycle', `status "${CONCLUDED_STATUS}" requires a conclusion block`)
+    return
+  }
+  if (!c || typeof c !== 'object' || Array.isArray(c)) {
+    fail('lifecycle', 'conclusion must be an object')
+    return
+  }
+  if (c.verdict !== 'supported' && c.verdict !== 'not-supported') {
+    fail('lifecycle', `conclusion.verdict "${c.verdict}" is not supported|not-supported`)
+  } else if (c.supported !== (c.verdict === 'supported')) {
+    fail('lifecycle', `conclusion.supported ${c.supported} contradicts verdict "${c.verdict}"`)
+  }
+  // A conclusion is only allowed to exist for evidence the analysis calls
+  // complete; anything else means the decision rule was applied to partial data.
+  if (c.state !== 'complete') {
+    fail('lifecycle', `conclusion.state "${c.state}" — a conclusion may only be drawn from complete evidence`)
+  }
+  if (Number.isNaN(Date.parse(c.closedAt))) {
+    fail('lifecycle', `conclusion.closedAt "${c.closedAt}" is not a parseable date`)
+  }
+  const ev = c.evidence
+  if (!ev || typeof ev !== 'object' || Array.isArray(ev)) {
+    fail('lifecycle', 'conclusion.evidence must be an object naming the sweep log and the analysed routes')
+    return
+  }
+  if (ev.sweepLog !== `runs/${claim.id}/sweep-log.jsonl`) {
+    fail('lifecycle', `conclusion.evidence.sweepLog "${ev.sweepLog}" is not this claim's sweep log`)
+  }
+  const registeredRoutes = Array.isArray(claim.routes) ? claim.routes : []
+  if (!Array.isArray(ev.pooledRoutes) || ev.pooledRoutes.length === 0) {
+    fail('lifecycle', 'conclusion.evidence.pooledRoutes must name the routes that were pooled')
+  } else {
+    const unregistered = ev.pooledRoutes.filter(r => !registeredRoutes.includes(r))
+    if (unregistered.length > 0) {
+      fail('lifecycle', `conclusion pooled unregistered route(s): ${unregistered.join(', ')}`)
+    }
+  }
+  // n is preregistered; a conclusion that analysed a different n re-cut the
+  // design after seeing results.
+  const registeredN = claim.design?.nPerArmPerRoute
+  if (registeredN !== undefined && ev.nPerArmPerRoute !== registeredN) {
+    fail('lifecycle', `conclusion analysed n=${ev.nPerArmPerRoute} but the claim registered nPerArmPerRoute=${registeredN}`)
+  }
+}
+
 function checkClaim (file) {
   const failures = []
   const fail = (check, detail) => failures.push(`${check}: ${detail}`)
@@ -104,7 +180,9 @@ function checkClaim (file) {
       const tunePath = path.join(root, claim.tuneFile)
       if (!existsSync(tunePath)) {
         fail('tune', `tuneFile does not exist: ${claim.tuneFile}`)
-      } else if (sha256String(readFileSync(tunePath, 'utf8')) !== claim.tuneSha256) {
+      // Hash the raw bytes, as lib/tune.js does when it records a pack's tune
+      // provenance — a utf8 round-trip would forgive bytes the runner would not.
+      } else if (sha256String(readFileSync(tunePath)) !== claim.tuneSha256) {
         fail('tune', `sha256 of ${claim.tuneFile} does not match the pinned tuneSha256`)
       }
     }
@@ -171,6 +249,8 @@ function checkClaim (file) {
   if (Number.isNaN(Date.parse(claim.registeredAt))) {
     fail('registeredAt', `"${claim.registeredAt}" is not a parseable date`)
   }
+
+  checkLifecycle(claim, fail)
 
   return failures
 }
