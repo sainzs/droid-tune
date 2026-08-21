@@ -6,11 +6,11 @@ step, no external requests — every asset is relative, so it renders offline.
 ## Preview
 
 Open `site/index.html` directly in a browser (`file://` works), or serve the
-repo root so the hero image resolves:
+directory so the relative assets resolve:
 
 ```sh
-cd .. && python3 -m http.server 8000
-# then open http://localhost:8000/site/
+cd site && python3 -m http.server 8000
+# then open http://localhost:8000/
 ```
 
-Files: `index.html`, `styles.css`. No JavaScript is used.
+Files: `index.html`, `styles.css`, `hero.gif`. No JavaScript is used.
