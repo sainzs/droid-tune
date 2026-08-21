@@ -1,17 +1,17 @@
 # Free-route weather
 
-**As of 2026-08-20, 4 of 8 free routes answered.**
+**As of 2026-08-21, 4 of 8 free routes answered.**
 
-| route | 08-20 | up |
-| --- | --- | --- |
-| `hy3-free` | ✓ | 1/1 |
-| `nemotron-3.5-lightning-free` | ✓ | 1/1 |
-| `laguna-s-2.1-free` | ✓ | 1/1 |
-| `nemotron-3-ultra-free` | ✓ | 1/1 |
-| `deepseek-v4-flash-free` | 429 | 0/1 |
-| `glm-5-free` | n/a | 0/1 |
-| `kimi-k2.5-free` | n/a | 0/1 |
-| `mimo-v2.5-free` | 429 | 0/1 |
+| route | 08-20 | 08-21 | up |
+| --- | --- | --- | --- |
+| `hy3-free` | ✓ | ✓ | 2/2 |
+| `nemotron-3.5-lightning-free` | ✓ | ✓ | 2/2 |
+| `laguna-s-2.1-free` | ✓ | ✓ | 2/2 |
+| `nemotron-3-ultra-free` | ✓ | err | 1/2 |
+| `deepseek-v4-flash-free` | 429 | auth | 0/2 |
+| `glm-5-free` | n/a | n/a | 0/2 |
+| `kimi-k2.5-free` | n/a | n/a | 0/2 |
+| `mimo-v2.5-free` | 429 | ✓ | 1/2 |
 
 - `✓` — answered with a well-formed completion
 - `429` — throttled
