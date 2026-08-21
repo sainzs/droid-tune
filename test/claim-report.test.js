@@ -495,6 +495,24 @@ test('SWEEP_ABORTED marks the evidence suspect and never evaluates', (t) => {
   assert.match(renderPlain(r), /aborted — sweep terminated at/)
 })
 
+test('an ABORT_ACKNOWLEDGED line is history, not a trial outcome', (t) => {
+  // --resume-after-abort records the operator's decision against the aborted
+  // slot; it must not overwrite that slot's real outcome in the analysis.
+  const fixture = makeFixture(t, { n: 2 })
+  const lines = baseLines(fixture, seqs1(
+    [PASS, 'HARNESS_ERROR'],
+    [PASS, PASS]
+  ))
+  lines.push(logLine({ route: 'hy3-free', arm: 'no-tune', attempt: 2, outcome: 'SWEEP_ABORTED' }))
+  lines.push(logLine({ route: 'hy3-free', arm: 'no-tune', attempt: 2, outcome: 'ABORT_ACKNOWLEDGED' }))
+  writeLog(fixture, lines)
+  const r = analyze(fixture)
+  assert.equal(r.state, 'aborted')
+  const arm = r.routes.find(rt => rt.route === 'hy3-free').arms.find(a => a.arm === 'no-tune')
+  assert.equal(arm.outcomes.HARNESS_ERROR, 1)
+  assert.equal(arm.outcomes.ABORT_ACKNOWLEDGED, undefined)
+})
+
 test('an empty runs dir reports no-evidence and exits the decision', (t) => {
   const fixture = makeFixture(t)
   const r = analyze(fixture)

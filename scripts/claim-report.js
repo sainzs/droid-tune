@@ -389,6 +389,9 @@ export function analyzeClaim (opts) {
       abortedBy.attempt = line.attempt
       continue
     }
+    // An ABORT_ACKNOWLEDGED line records the operator's --resume-after-abort
+    // decision; it names the aborted slot but is not a trial outcome.
+    if (line.outcome === 'ABORT_ACKNOWLEDGED') continue
     if (line.outcome === 'SCHEDULED') {
       scheduled.push(line)
       continue
