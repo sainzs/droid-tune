@@ -388,6 +388,22 @@ test('sweep CLI refuses an unresolvable route even on a dry run', async (t) => {
   assert.match(r.stderr, /does not resolve/)
 })
 
+// The real claim's registered fields, written to a temp file with its lifecycle
+// rolled back to registration. dt-v1-ledger-lite-nosub has since been concluded
+// (status "reported"), and a sweep rightly refuses to collect fresh data under a
+// concluded id — so these end-to-end tests, which exist to check that the real
+// registered design schedules correctly, supply an open copy rather than
+// asserting the repo's claim is forever open.
+function openRealClaimPath (t) {
+  const src = path.join(root, 'claims', 'dt-v1-ledger-lite-nosub.json')
+  const { conclusion, ...rest } = JSON.parse(readFileSync(src, 'utf8'))
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-open-claim-'))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  const dest = path.join(dir, 'dt-v1-ledger-lite-nosub.json')
+  writeFileSync(dest, JSON.stringify({ ...rest, status: 'preregistered' }, null, 2) + '\n')
+  return dest
+}
+
 test('sweep CLI dry-runs the real preregistered claim end to end', async (t) => {
   const temp = mkdtempSync(path.join(os.tmpdir(), 'droidtune-sweep-real-'))
   t.after(() => rmSync(temp, { recursive: true, force: true }))
@@ -397,7 +413,7 @@ test('sweep CLI dry-runs the real preregistered claim end to end', async (t) => 
       .map(id => ({ id, model: id }))
   }))
   const runsDir = path.join(temp, 'runs')
-  const r = run(['sweep', '--claim', 'dt-v1-ledger-lite-nosub', '--config', configPath, '--runs-dir', runsDir, '--json'])
+  const r = run(['sweep', '--claim', openRealClaimPath(t), '--config', configPath, '--runs-dir', runsDir, '--json'])
   assert.equal(r.code, 0, r.stderr)
   const result = JSON.parse(r.stdout)
   assert.equal(result.claimId, 'dt-v1-ledger-lite-nosub')
@@ -688,8 +704,8 @@ test('--limit landing exactly on the remaining work is a finish, not a stop', as
   assert.ok(result.slots.every(s => s.status === 'done'))
 })
 
-test('sweep CLI accepts --resume-after-abort on a dry run', () => {
-  const r = run(['sweep', '--claim', 'dt-v1-ledger-lite-nosub', '--resume-after-abort'])
+test('sweep CLI accepts --resume-after-abort on a dry run', (t) => {
+  const r = run(['sweep', '--claim', openRealClaimPath(t), '--resume-after-abort'])
   assert.equal(r.code, 0)
   assert.match(r.stdout, /DRY RUN/)
 })

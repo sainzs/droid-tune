@@ -6,15 +6,34 @@ import { loadClaims, validateClaim } from '../lib/claims.js'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-test('committed claim registry contains valid preregistrations, not results', () => {
+// A committed claim is either an open promise or a closed one, and closure is
+// now a real transition (scripts/claim-report.js --close), so pinning the
+// registry to "everything is preregistered" would fail the day any claim is
+// concluded. What must hold in both states is that a result never appears
+// outside a conclusion block — that is the laundering this registry prevents.
+test('committed claim registry holds valid claims, with no result outside a conclusion', () => {
   const claims = loadClaims(path.join(root, 'claims'))
   assert.ok(claims.length > 0)
-  assert.ok(claims.every(claim => claim.status === 'preregistered'))
+  assert.ok(claims.every(claim => ['preregistered', 'reported'].includes(claim.status)))
   assert.ok(claims.every(claim => !('result' in claim)))
+  // An open claim carries no conclusion; a closed one must.
+  for (const claim of claims) {
+    assert.equal('conclusion' in claim, claim.status === 'reported', `${claim.id} status/conclusion disagree`)
+  }
 })
 
+// The registered fields of a real claim, with its lifecycle stripped back to
+// the moment of registration. Tests below mutate this to build synthetic
+// records; deriving it from the real file keeps them honest about the shape a
+// claim actually has, while staying independent of whether that claim has
+// since been concluded.
+const openBase = (claim) => {
+  const { conclusion, ...rest } = claim
+  return { ...rest, status: 'preregistered' }
+}
+
 test('claim validation rejects result laundering into a preregistration', () => {
-  const valid = loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub')
+  const valid = openBase(loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub'))
   assert.throws(() => validateClaim({ ...valid, result: { pass: true } }), /cannot contain results/)
 })
 
@@ -34,14 +53,14 @@ const conclusionFor = (claim, over = {}) => ({
 })
 
 test('claim validation accepts a mechanically closed claim', () => {
-  const valid = loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub')
+  const valid = openBase(loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub'))
   const closed = { ...valid, status: 'reported', conclusion: conclusionFor(valid) }
   assert.equal(validateClaim(closed).status, 'reported')
   assert.equal(validateClaim({ ...closed, conclusion: conclusionFor(valid, { verdict: 'supported', supported: true }) }).conclusion.verdict, 'supported')
 })
 
 test('claim validation rejects a reported record whose conclusion does not hold up', () => {
-  const valid = loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub')
+  const valid = openBase(loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub'))
   const closed = (over) => ({ ...valid, status: 'reported', conclusion: conclusionFor(valid, over) })
   const cases = [
     [{ ...valid, status: 'reported' }, /require a conclusion object/],
@@ -62,7 +81,7 @@ test('claim validation rejects a reported record whose conclusion does not hold 
 })
 
 test('claim validation rejects a conclusion bolted onto a still-open claim', () => {
-  const valid = loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub')
+  const valid = openBase(loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub'))
   assert.throws(() => validateClaim({ ...valid, conclusion: conclusionFor(valid) }), /preregistered claims cannot contain results/)
   // And a closed claim may not carry a second, top-level verdict either.
   assert.throws(
