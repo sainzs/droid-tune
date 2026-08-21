@@ -246,8 +246,53 @@ Common overrides: `--sessions-dir <path>` · `--config <file>` ·
 `--droid-path <path>`.
 
 `scripts/check-claim.js` validates every `claims/*.json` on each CI run — id,
-status, the tune hash, design arithmetic, route/arm uniqueness — so a claim
-cannot drift from the artifacts it pins without failing the build.
+status, the tune hash, design arithmetic, route/arm uniqueness, and the
+lifecycle below — so a claim cannot drift from the artifacts it pins without
+failing the build.
+
+### Closing a claim
+
+`scripts/claim-report.js` reads the evidence packs and computes the decision
+rule; on its own it writes nothing. `--close` is the one write, and it exists so
+that a claim with complete evidence cannot sit in the repo as `preregistered`
+with a "Not run" limitation forever:
+
+```sh
+node scripts/claim-report.js --claim dt-v1-ledger-lite-nosub            # read-only analysis
+node scripts/claim-report.js --claim dt-v1-ledger-lite-nosub --close    # publish the conclusion
+```
+
+Closure moves the claim `preregistered -> reported` and appends one
+`conclusion` block. Every field in it — verdict, per-arm and pooled rates,
+Fisher table and p, each decision condition, the pooled routes, the sweep log
+it was computed from — is a pure function of the same analysis the plain report
+prints; there is no place for prose or an operator's opinion. The
+preregistration itself is never touched: `status` and `conclusion` are the only
+writable keys, and the merge is checked field by field before serialisation, so
+a bug in the derivation raises rather than rewrites a promise. The file is
+written to a same-directory temp file and renamed, so an interrupted close
+leaves the preregistration intact rather than a truncated claim.
+
+What it refuses, all with exit 1 and nothing written:
+
+- evidence that is still running, aborted, absent, or dropped a registered
+  route — the decision rule is never applied to partial evidence, so it is
+  never frozen into the claim from partial evidence either;
+- any status other than `preregistered` (a `reported` claim is already closed);
+- a file that is internally inconsistent — `reported` without a conclusion, a
+  conclusion on a still-open claim, or a `result`/`verdict` field parked at the
+  top level;
+- a re-close whose evidence now says something different from the published
+  conclusion. Re-closing from the same packs is a no-op: identical conclusions
+  compare equal ignoring the closure timestamp, so the command is idempotent,
+  but a changed conclusion is a conflict for a human to resolve, not something
+  to overwrite.
+
+`reported` is the registry's existing vocabulary rather than a new "closed"
+status, which is also what retires the claim mechanically: `lib/sweep.js`
+schedules only `preregistered` claims, so a concluded claim can no longer be
+swept. `lib/sweep.js` was not modified for this. The exit code still reports
+the finding and not the bookkeeping — a closed NOT SUPPORTED claim exits 1.
 
 The native baseline intentionally records observed Factory Standard Credits,
 not a fabricated USD conversion. No live baseline was run as part of M5

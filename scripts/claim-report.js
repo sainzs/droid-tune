@@ -27,6 +27,16 @@
 // that is still running, was aborted by a harness fault, or has a route
 // dropped from the pool is reported with its state and exits 1.
 //
+// --close is the one deliberate write. Analysis alone leaves a run claim
+// saying "status: preregistered" and "Not run", which is a false statement
+// about the repository once the packs exist. `--close` moves the claim through
+// its lifecycle exactly once: preregistered -> reported, plus a `conclusion`
+// block derived entirely from the analysis above. It never authors prose,
+// never touches a registered field, and refuses (writing nothing) unless the
+// evidence is complete and the claim is still preregistered — see
+// canCloseClaim() for the full refusal list. A concluded claim is no longer
+// sweepable, because lib/sweep.js runs preregistered claims only.
+//
 // Faithfully handling dot/dash route spellings: the Droid config keys free
 // routes by slug-friendlier ids (custom:nemotron-3-5-lightning-free-...) while
 // the claim names the same routes with dots (nemotron-3.5-lightning-free).
@@ -48,7 +58,7 @@
 //   2 usage error
 //   (A claim that cannot be read or fails claim validation is an ANALYSIS
 //   failure — malformed data is not a usage mistake — and exits 1, not 2.)
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -639,6 +649,228 @@ export function evaluateDecision (opts) {
 }
 
 // ---------------------------------------------------------------------------
+// Closure — the lifecycle write
+// ---------------------------------------------------------------------------
+
+// The status a concluded claim carries. Reusing the registry's existing
+// `reported` vocabulary rather than inventing a "closed" status keeps every
+// consumer working, and it is what makes a concluded claim unsweepable for
+// free: lib/sweep.js refuses any claim whose status is not `preregistered`.
+export const CLOSED_STATUS = 'reported'
+
+// The only keys closure may add or change. Every other key in the file is the
+// preregistration — the promise made before data existed — and must survive a
+// closure untouched. assertRegisteredFieldsUnchanged() enforces this on the
+// object that is about to be serialised, not merely by construction, so a
+// future edit to deriveConclusion cannot quietly rewrite a registered field.
+export const CLOSURE_WRITABLE_KEYS = ['status', 'conclusion']
+
+// Keys that must never appear in a claim file at all: `result`/`verdict` at the
+// top level are how a preregistration gets laundered into a finding. Closure
+// writes its findings under `conclusion`, which is validated as a whole.
+const FORBIDDEN_CLAIM_KEYS = ['result', 'verdict', 'results', 'findings']
+
+const armSummary = (stats) => ({
+  attempts: stats.attempts,
+  scorable: stats.scorable,
+  noSubmission: stats.noSubmission,
+  noSubmissionRate: stats.noSubmissionRate,
+  verifiedPass: stats.verifiedPass,
+  verifiedPassRate: stats.verifiedPassRate
+})
+
+// Everything here is a pure function of the analysis: no prose, no operator
+// input, no judgement. `closedAt` is the only value not derived from evidence,
+// which is why it is passed in rather than read from the clock in here.
+export function deriveConclusion (result, closedAt) {
+  const pooled = {}
+  for (const arm of result.arms) pooled[arm] = armSummary(result.pooled[arm])
+  return {
+    status: CLOSED_STATUS,
+    closedAt,
+    closedBy: 'scripts/claim-report.js --close',
+    state: result.state,
+    verdict: result.decision.verdict,
+    supported: result.decision.supported,
+    evidence: {
+      // Repo-relative by construction: an absolute runs path is a fact about
+      // one machine, not about the claim.
+      sweepLog: `runs/${result.claimId}/sweep-log.jsonl`,
+      task: result.task,
+      baseTrials: result.baseSlots.expected,
+      nPerArmPerRoute: result.design.nPerArmPerRoute,
+      pooledRoutes: result.pooledIncludedRoutes,
+      droppedRoutes: result.droppedRoutes
+    },
+    pooled,
+    perRoute: result.routes.map(r => ({
+      route: r.route,
+      dropped: r.dropped,
+      replacementsUsed: r.replacementsUsed,
+      arms: r.arms.map(a => ({ arm: a.arm, ...armSummary(a) }))
+    })),
+    fisher: { table: result.fisher.table, p: result.fisher.p, alpha: result.fisher.alpha },
+    decisionRule: result.decisionRule,
+    conditions: result.decision.conditions.map(c => ({
+      id: c.id, label: c.label, met: c.met, detail: c.detail
+    }))
+  }
+}
+
+// Two conclusions agree when they say the same thing about the evidence. The
+// closure timestamp and its author are excluded: re-closing a claim from the
+// same packs must be recognised as a no-op, not as a conflict.
+export function conclusionsAgree (a, b) {
+  const strip = (c) => {
+    const { closedAt, closedBy, ...rest } = c ?? {}
+    return JSON.stringify(rest)
+  }
+  return strip(a) === strip(b)
+}
+
+// Why a claim may not be closed. Returns null when it may, the string
+// 'already-closed' when this exact conclusion is already on disk (idempotent
+// re-run), or a refusal { code, message }.
+export function canCloseClaim (claim, result) {
+  const forbidden = FORBIDDEN_CLAIM_KEYS.filter(k => Object.hasOwn(claim, k))
+  if (forbidden.length > 0) {
+    return {
+      code: 'lifecycle',
+      message: `claim carries result field(s) ${forbidden.join(', ')} outside the conclusion block`
+    }
+  }
+  if (claim.status === CLOSED_STATUS) {
+    if (!claim.conclusion) {
+      return {
+        code: 'lifecycle',
+        message: `claim status is already "${CLOSED_STATUS}" but carries no conclusion — the file is inconsistent and must be fixed by hand`
+      }
+    }
+    if (!result.evaluated || result.state !== 'complete' || !result.decision) {
+      return {
+        code: 'conflict',
+        message: `claim is already closed, but the evidence on disk is now "${result.state}" — refusing to touch a concluded claim`
+      }
+    }
+    if (conclusionsAgree(claim.conclusion, deriveConclusion(result, claim.conclusion.closedAt))) {
+      return 'already-closed'
+    }
+    return {
+      code: 'conflict',
+      message: 'claim is already closed with a different conclusion — the evidence changed after closure; refusing to overwrite a published result'
+    }
+  }
+  if (claim.status !== 'preregistered') {
+    return {
+      code: 'status',
+      message: `claim status is "${claim.status}" — only a "preregistered" claim can be closed`
+    }
+  }
+  if (claim.conclusion !== undefined) {
+    return {
+      code: 'lifecycle',
+      message: 'claim is still preregistered but already carries a conclusion — the file is inconsistent and must be fixed by hand'
+    }
+  }
+  // The decision rule is never applied to partial evidence, so closure — which
+  // publishes that decision into the claim file — cannot be either. A sweep
+  // that dropped a route analysed less than it promised: reportable, but not
+  // something this tool will freeze into the preregistration on its own.
+  if (result.state !== 'complete' || !result.decision) {
+    return {
+      code: 'evidence',
+      message: `evidence state is "${result.state}" — a claim is closed only from complete evidence with every registered route intact`
+    }
+  }
+  return null
+}
+
+// Guard against the class of bug that would matter most here: a closure that
+// silently edits the preregistration. Throws rather than returning a refusal,
+// because reaching it means deriveConclusion or the merge is wrong, not that
+// the operator did something.
+export function assertRegisteredFieldsUnchanged (before, after) {
+  for (const key of Object.keys(before)) {
+    if (CLOSURE_WRITABLE_KEYS.includes(key)) continue
+    if (!Object.hasOwn(after, key)) {
+      throw new Error(`closure dropped registered field "${key}"`)
+    }
+    if (JSON.stringify(after[key]) !== JSON.stringify(before[key])) {
+      throw new Error(`closure would modify registered field "${key}"`)
+    }
+  }
+  for (const key of Object.keys(after)) {
+    if (!Object.hasOwn(before, key) && !CLOSURE_WRITABLE_KEYS.includes(key)) {
+      throw new Error(`closure added unregistered field "${key}"`)
+    }
+  }
+}
+
+// Close one claim. Writes at most one file, only after every guard passes, and
+// never on a refusal. The returned action is one of:
+//   'closed'     — status moved to reported and a conclusion was written
+//   'unchanged'  — the identical conclusion was already on disk
+//   'refused'    — nothing was written; `refusal` says why
+export function closeClaim (opts) {
+  const { claimPath, result, now = new Date() } = opts
+  const raw = readFileSync(claimPath, 'utf8')
+  const before = JSON.parse(raw)
+  const verdict = canCloseClaim(before, result)
+  if (verdict !== null && verdict !== 'already-closed') {
+    return { action: 'refused', refusal: verdict, claimPath, wrote: false, conclusion: null }
+  }
+  if (verdict === 'already-closed') {
+    return {
+      action: 'unchanged',
+      refusal: null,
+      claimPath,
+      wrote: false,
+      conclusion: before.conclusion,
+      statusFrom: before.status,
+      statusTo: before.status
+    }
+  }
+  const conclusion = deriveConclusion(result, now.toISOString())
+  // Key order is preserved and `conclusion` appended, so the diff a reviewer
+  // sees is one status word plus one new block.
+  const after = { ...before, status: CLOSED_STATUS, conclusion }
+  assertRegisteredFieldsUnchanged(before, after)
+  const serialized = JSON.stringify(after, null, 2) + '\n'
+  // Same-directory temp + rename: a crash mid-write leaves the preregistration
+  // intact rather than a truncated claim.
+  const tmp = `${claimPath}.close-tmp`
+  writeFileSync(tmp, serialized)
+  renameSync(tmp, claimPath)
+  return {
+    action: 'closed',
+    refusal: null,
+    claimPath,
+    wrote: true,
+    conclusion,
+    statusFrom: before.status,
+    statusTo: CLOSED_STATUS
+  }
+}
+
+export function renderClosure (closure) {
+  const lines = ['', '## Closure (--close)']
+  if (closure.action === 'refused') {
+    lines.push(`  REFUSED (${closure.refusal.code}) — ${closure.refusal.message}`)
+    lines.push('  Nothing was written; the claim file is unchanged.')
+    return lines.join('\n')
+  }
+  if (closure.action === 'unchanged') {
+    lines.push(`  already closed — the conclusion on disk matches this evidence exactly (closedAt ${closure.conclusion.closedAt})`)
+    lines.push('  Nothing was written.')
+    return lines.join('\n')
+  }
+  lines.push(`  status     ${closure.statusFrom} -> ${closure.statusTo}`)
+  lines.push(`  conclusion ${closure.conclusion.verdict} (state ${closure.conclusion.state}) · closedAt ${closure.conclusion.closedAt}`)
+  lines.push(`  written    ${closure.claimPath} — registered fields unchanged, conclusion derived from the analysis above`)
+  return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
 // Rendering
 // ---------------------------------------------------------------------------
 
@@ -773,6 +1005,11 @@ Flags:
   --runs-dir <dir>  Evidence root (default ./runs under the repo)
   --config <file>   Droid config for route-id resolution (default ~/.factory/settings.json)
   --json            Machine-readable output (single JSON object)
+  --close           Move a preregistered claim to "${CLOSED_STATUS}" and write a
+                    conclusion derived from this analysis. The only write this
+                    tool performs. Registered fields are never modified.
+                    Refused unless the claim is still preregistered and the
+                    evidence is complete with every registered route intact.
   -h, --help        Show this help
 
 The decision rule (claim.decisionRule) requires ALL of:
@@ -798,12 +1035,13 @@ function usageError (msg) {
 }
 
 export function parseArgs (argv) {
-  const opts = { claim: null, runsDir: null, config: null, json: false, help: false }
+  const opts = { claim: null, runsDir: null, config: null, json: false, close: false, help: false }
   const positionals = []
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === '-h' || a === '--help') opts.help = true
     else if (a === '--json') opts.json = true
+    else if (a === '--close') opts.close = true
     else if (a === '--claim') {
       const v = argv[++i]
       if (v === undefined) usageError('--claim requires a value')
@@ -858,12 +1096,33 @@ export function main () {
     process.exitCode = 1
     return
   }
+  let closure = null
+  if (opts.close) {
+    try {
+      closure = closeClaim({ claimPath, result })
+    } catch (err) {
+      process.stderr.write(`claim-report: refusing to close ${claimPath}: ${err && err.message ? err.message : err}\n`)
+      process.exitCode = 1
+      return
+    }
+    result = { ...result, closure }
+  }
   process.stdout.write(
-    (opts.json ? renderJson(result) : renderPlain(result)) + (opts.json ? '' : '\n') + '\n'
+    (opts.json
+      ? renderJson(result)
+      : renderPlain(result) + (closure ? '\n' + renderClosure(closure) : '')) +
+    (opts.json ? '' : '\n') + '\n'
   )
+  if (closure && closure.action === 'refused') {
+    process.stderr.write(`claim-report: refusing to close ${claimPath} (${closure.refusal.code}): ${closure.refusal.message}\n`)
+    process.exitCode = 1
+    return
+  }
   // 0 only for a fully evaluated, supported claim on complete evidence with
   // every route intact. Everything else — not supported, still running,
-  // aborted, dropped a route, or no evidence at all — is exit 1.
+  // aborted, dropped a route, or no evidence at all — is exit 1. Closing a
+  // claim does not change this: a closed NOT SUPPORTED claim still exits 1,
+  // because the exit code reports the finding, not the bookkeeping.
   process.exitCode =
     result.state === 'complete' && result.decision?.supported === true ? 0 : 1
 }

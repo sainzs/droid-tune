@@ -14,8 +14,61 @@ test('committed claim registry contains valid preregistrations, not results', ()
 })
 
 test('claim validation rejects result laundering into a preregistration', () => {
-  const valid = loadClaims(path.join(root, 'claims'))[0]
+  const valid = loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub')
   assert.throws(() => validateClaim({ ...valid, result: { pass: true } }), /cannot contain results/)
+})
+
+// A synthetic conclusion in the shape scripts/claim-report.js --close writes.
+// The committed claims stay preregistered; nothing here touches them.
+const conclusionFor = (claim, over = {}) => ({
+  verdict: 'not-supported',
+  supported: false,
+  state: 'complete',
+  closedAt: '2026-08-21T00:00:00.000Z',
+  evidence: {
+    sweepLog: `runs/${claim.id}/sweep-log.jsonl`,
+    pooledRoutes: [...claim.routes],
+    nPerArmPerRoute: claim.design.nPerArmPerRoute
+  },
+  ...over
+})
+
+test('claim validation accepts a mechanically closed claim', () => {
+  const valid = loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub')
+  const closed = { ...valid, status: 'reported', conclusion: conclusionFor(valid) }
+  assert.equal(validateClaim(closed).status, 'reported')
+  assert.equal(validateClaim({ ...closed, conclusion: conclusionFor(valid, { verdict: 'supported', supported: true }) }).conclusion.verdict, 'supported')
+})
+
+test('claim validation rejects a reported record whose conclusion does not hold up', () => {
+  const valid = loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub')
+  const closed = (over) => ({ ...valid, status: 'reported', conclusion: conclusionFor(valid, over) })
+  const cases = [
+    [{ ...valid, status: 'reported' }, /require a conclusion object/],
+    [closed({ verdict: 'inconclusive' }), /verdict must be supported or not-supported/],
+    [closed({ supported: true }), /supported flag contradicts/],
+    [closed({ state: 'incomplete' }), /complete evidence/],
+    [closed({ closedAt: 'someday' }), /closedAt must be an ISO timestamp/],
+    [closed({ evidence: undefined }), /must cite its evidence/],
+    [closed({ evidence: { ...conclusionFor(valid).evidence, sweepLog: 'runs/other/sweep-log.jsonl' } }), /this claim's sweep log/],
+    [closed({ evidence: { ...conclusionFor(valid).evidence, pooledRoutes: [] } }), /must name the pooled routes/],
+    [closed({ evidence: { ...conclusionFor(valid).evidence, pooledRoutes: ['made-up-route'] } }), /never registered/],
+    [closed({ evidence: { ...conclusionFor(valid).evidence, nPerArmPerRoute: 3 } }), /different n than the claim registered/],
+    [{ ...valid, status: 'withdrawn' }, /must be preregistered or reported/]
+  ]
+  for (const [claim, expected] of cases) {
+    assert.throws(() => validateClaim(claim), expected)
+  }
+})
+
+test('claim validation rejects a conclusion bolted onto a still-open claim', () => {
+  const valid = loadClaims(path.join(root, 'claims')).find(c => c.id === 'dt-v1-ledger-lite-nosub')
+  assert.throws(() => validateClaim({ ...valid, conclusion: conclusionFor(valid) }), /preregistered claims cannot contain results/)
+  // And a closed claim may not carry a second, top-level verdict either.
+  assert.throws(
+    () => validateClaim({ ...valid, status: 'reported', conclusion: conclusionFor(valid), verdict: 'supported' }),
+    /cannot contain results outside its conclusion block/
+  )
 })
 
 test('dt-v1-ledger-lite-nosub preregisters arms, routes, n, and an exact primary metric', () => {

@@ -125,6 +125,82 @@ test('synthetic bad claims fail with every check named', () => {
   }
 })
 
+// --- lifecycle --------------------------------------------------------------
+
+// The conclusion shape scripts/claim-report.js --close writes, for a synthetic
+// claim only; the committed claims are never edited by these tests.
+const conclusion = (id, over = {}) => ({
+  verdict: 'not-supported',
+  supported: false,
+  state: 'complete',
+  closedAt: '2026-08-21T00:00:00.000Z',
+  evidence: {
+    sweepLog: `runs/${id}/sweep-log.jsonl`,
+    pooledRoutes: ['hy3-free', 'nemotron-3-ultra-free'],
+    nPerArmPerRoute: 5
+  },
+  ...over
+})
+const closed = (id, over = {}) => ({ ...base(id), status: 'reported', conclusion: conclusion(id, over) })
+
+const checkOne = (claim) => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-cc-life-'))
+  try {
+    const file = path.join(dir, `${claim.id}.json`)
+    writeFileSync(file, JSON.stringify(claim, null, 2))
+    const r = run([file])
+    return { status: r.status, out: r.stdout.trim() }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
+test('a closed claim with a consistent conclusion passes', () => {
+  assert.deepEqual(checkOne(closed('life-ok')).status, 0)
+  const supported = checkOne(closed('life-supported', { verdict: 'supported', supported: true }))
+  assert.equal(supported.status, 0, supported.out)
+})
+
+test('an open claim may not carry a conclusion or a top-level result', () => {
+  for (const status of ['preregistered', 'running']) {
+    const r = checkOne({ ...base('life-open'), status, conclusion: conclusion('life-open') })
+    assert.equal(r.status, 1)
+    assert.match(r.out, /lifecycle: status "(preregistered|running)" must not carry a conclusion/)
+  }
+  const stray = checkOne({ ...base('life-stray'), results: { pooled: {} }, verdict: 'supported' })
+  assert.equal(stray.status, 1)
+  // Named in the validator's own fixed order, so the message never depends on
+  // key order in the file being checked.
+  assert.match(stray.out, /lifecycle: result field\(s\) results, verdict must live inside the conclusion block/)
+})
+
+test('a reported claim with no conclusion cannot pass — "Not run" is not an ending', () => {
+  const r = checkOne({ ...base('life-empty'), status: 'reported' })
+  assert.equal(r.status, 1)
+  assert.match(r.out, /lifecycle: status "reported" requires a conclusion block/)
+})
+
+test('a hand-edited conclusion fails on whichever pin it breaks', () => {
+  const cases = [
+    [closed('life-verdict', { verdict: 'inconclusive' }), /conclusion\.verdict "inconclusive" is not supported\|not-supported/],
+    [closed('life-flag', { supported: true }), /conclusion\.supported true contradicts verdict "not-supported"/],
+    [closed('life-state', { state: 'incomplete' }), /may only be drawn from complete evidence/],
+    [closed('life-date', { closedAt: 'soon' }), /conclusion\.closedAt "soon" is not a parseable date/],
+    [closed('life-noev', { evidence: null }), /conclusion\.evidence must be an object/],
+    [closed('life-log', { evidence: { ...conclusion('life-log').evidence, sweepLog: 'runs/elsewhere/sweep-log.jsonl' } }), /is not this claim's sweep log/],
+    [closed('life-nopooled', { evidence: { ...conclusion('life-nopooled').evidence, pooledRoutes: [] } }), /must name the routes that were pooled/],
+    [closed('life-unreg', { evidence: { ...conclusion('life-unreg').evidence, pooledRoutes: ['hy3-free', 'invented-free'] } }), /pooled unregistered route\(s\): invented-free/],
+    [closed('life-n', { evidence: { ...conclusion('life-n').evidence, nPerArmPerRoute: 3 } }), /analysed n=3 but the claim registered nPerArmPerRoute=5/],
+    [{ ...closed('life-shape'), conclusion: 'supported' }, /conclusion must be an object/]
+  ]
+  for (const [claim, expected] of cases) {
+    const r = checkOne(claim)
+    assert.equal(r.status, 1, `${claim.id} must fail\n${r.out}`)
+    assert.match(r.out, /\blifecycle:/)
+    assert.match(r.out, expected)
+  }
+})
+
 test('a single bad claim file exits 1 and names its check', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-cc-one-'))
   const file = path.join(dir, 'broken.json')
