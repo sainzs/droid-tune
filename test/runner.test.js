@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
-import { cpSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, cpSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { runTrial } from '../lib/runner.js'
@@ -301,6 +301,90 @@ test('a harness fault AFTER the attempt started still writes an evidence pack', 
     assert.match(events, /HARNESS_ERROR/)
     rmSync(brokenTask, { recursive: true, force: true })
   } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('a failed git rev-list is HARNESS_ERROR, not a silent reclassification', async () => {
+  // NO_SUBMISSION is decided by `git rev-list --count seed..HEAD`. If that call
+  // fails, stdout is empty — which is not '0' — so the unfixed runner skips
+  // NO_SUBMISSION and grades whatever it can extract. The headline metric of
+  // the current claim cannot move because a git binary hiccuped.
+  const shimDir = mkdtempSync(path.join(os.tmpdir(), 'droidtune-gitshim-'))
+  const ctx = makeEnv('pass')
+  const { execFileSync } = await import('node:child_process')
+  const realGit = execFileSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).trim()
+  writeFileSync(path.join(shimDir, 'git'), `#!/bin/sh
+for a in "$@"; do
+  if [ "$a" = "rev-list" ]; then
+    echo "fatal: simulated rev-list failure" >&2
+    exit 128
+  fi
+done
+exec "${realGit}" "$@"
+`)
+  chmodSync(path.join(shimDir, 'git'), 0o755)
+  try {
+    const r = await runTrial({
+      taskDir, model: 'custom:fake-0', droidPath: fakeDroid,
+      sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir,
+      env: { ...ctx.env, PATH: `${shimDir}${path.delimiter}${ctx.env.PATH}` }
+    })
+    assert.equal(r.outcome, 'HARNESS_ERROR')
+    const pack = ctx.packDir(r)
+    assert.ok(existsSync(path.join(pack, 'manifest.json')), 'the attempt happened; the pack must exist')
+    const errors = JSON.parse(readFileSync(path.join(pack, 'errors.json'), 'utf8'))
+    assert.match(String(errors.harness), /rev-list|commit count/)
+  } finally {
+    rmSync(shimDir, { recursive: true, force: true })
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('cleanup failure after a completed trial cannot discard the result', async () => {
+  // rmSync(worktree) in the runner's finally is attached to the same try as
+  // the harness-fault catch. A throw there (EBUSY/EPERM on temp worktrees)
+  // replaces an already-computed return value; the pack is on disk but the
+  // caller records nothing. DROIDTUNE_FAIL_CLEANUP is a test seam for that
+  // throw — the real EBUSY is timing-dependent.
+  const ctx = makeEnv('pass')
+  try {
+    const r = await runTrial({
+      taskDir, model: 'custom:fake-0', droidPath: fakeDroid,
+      sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir,
+      env: { ...ctx.env, DROIDTUNE_FAIL_CLEANUP: '1' }
+    })
+    assert.equal(r.outcome, 'VERIFIED_PASS')
+    assert.ok(existsSync(path.join(ctx.packDir(r), 'manifest.json')))
+    assert.match(String(r.cleanupWarning ?? r.results.cleanupWarning ?? ''), /EBUSY|cleanup/)
+  } finally {
+    rmSync(ctx.runsDir, { recursive: true, force: true })
+    rmSync(ctx.sessionsDir, { recursive: true, force: true })
+  }
+})
+
+test('cleanup failure does not mask a fail-fast error before the attempt starts', async () => {
+  // Counterpart: a throw from finally used to replace the seed.sh error with
+  // EBUSY. Fail-fast must still be fail-fast, and still name the seed.
+  const ctx = makeEnv('pass')
+  const brokenTask = mkdtempSync(path.join(os.tmpdir(), 'droidtune-badseed-cleanup-'))
+  try {
+    cpSync(taskDir, brokenTask, { recursive: true })
+    writeFileSync(path.join(brokenTask, 'environment', 'seed.sh'), 'exit 3\n')
+    await assert.rejects(
+      () => runTrial({
+        taskDir: brokenTask, taskId: 't001-greet-script', model: 'custom:fake-0', droidPath: fakeDroid,
+        sessionsDir: ctx.sessionsDir, configPath: ctx.configPath, runsDir: ctx.runsDir,
+        env: { ...ctx.env, DROIDTUNE_FAIL_CLEANUP: '1' }
+      }),
+      /seed\.sh failed/
+    )
+    const attemptDir = path.join(ctx.runsDir, 'ad-hoc', 'fake-0', 't001-greet-script', 'attempt-1')
+    assert.ok(!existsSync(path.join(attemptDir, 'manifest.json')), 'no pack for an attempt that never started')
+  } finally {
+    rmSync(brokenTask, { recursive: true, force: true })
     rmSync(ctx.runsDir, { recursive: true, force: true })
     rmSync(ctx.sessionsDir, { recursive: true, force: true })
   }

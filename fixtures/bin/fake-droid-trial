@@ -66,19 +66,25 @@ if [ -n "${FAKE_DROID_SESSIONS_DIR:-}" ]; then
   printf '{"type":"session_start","version":"0.197.0","cwd":"%s","title":"fake","timestamp":"%s"}\n{"type":"message","timestamp":"%s","message":{"role":"assistant","content":"OK"}}\n' "$CWD" "$NOW" "$NOW" > "$SDIR/$SID.jsonl"
 fi
 
-if [ "$MODE" = "pass" ] || [ "$MODE" = "passtainted" ]; then
+if [ "$MODE" = "pass" ] || [ "$MODE" = "passtainted" ] || [ "$MODE" = "passtaintedgone" ]; then
   cat > "$CWD/greet.sh" <<'GREET'
 #!/bin/sh
 printf 'hello tune-up\n'
 GREET
   chmod +x "$CWD/greet.sh"
   git -C "$CWD" add -A
-  # passtainted: solve the task correctly, but also force-commit the tune file
-  # past .git/info/exclude — the contamination the runner must refuse to score.
-  if [ "$MODE" = "passtainted" ] && [ -f "$CWD/AGENTS.md" ]; then
+  # passtainted / passtaintedgone: solve the task correctly, but also
+  # force-commit the tune file past .git/info/exclude — the contamination
+  # the runner must refuse to score. passtaintedgone then commits the
+  # removal so the NET diff is clean; history still contained the tune.
+  if { [ "$MODE" = "passtainted" ] || [ "$MODE" = "passtaintedgone" ]; } && [ -f "$CWD/AGENTS.md" ]; then
     git -C "$CWD" add -f AGENTS.md
   fi
   git -C "$CWD" commit -qm add-greet-script
+  if [ "$MODE" = "passtaintedgone" ]; then
+    git -C "$CWD" rm -f -q AGENTS.md
+    git -C "$CWD" commit -qm remove-tune
+  fi
 fi
 
 echo '{"result":"OK"}'
