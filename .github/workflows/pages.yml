@@ -1,0 +1,37 @@
+name: pages
+
+# Serve the finished static site from site/ as the web root. The site has no
+# build step and no JavaScript, so the published artifact is the directory
+# exactly as committed — there is nothing to compile.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# deploy-pages needs pages: write and an id-token to mint the OIDC token; the
+# checkout only reads, so contents is read-only.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Two overlapping runs (e.g. push + dispatch) would both deploy; let the newer
+# one win by serialising on a fixed group and never cancelling a deploy in
+# flight, which could leave Pages half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
