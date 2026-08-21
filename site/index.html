@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>droid-tune — Grade the commit, not the narration.</title>
+  <meta name="description" content="droid-tune is an open-source harness that measures Factory Droid agents by grading the commit, not the transcript, and writes an evidence pack for every attempt.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="wordmark" href="#top" aria-label="droid-tune home">
+        <span class="prompt" aria-hidden="true">$</span> droid-tune
+      </a>
+      <nav aria-label="Sections">
+        <ul class="nav-list">
+          <li><a href="#finding">The finding</a></li>
+          <li><a href="#evidence">Evidence packs</a></li>
+          <li><a href="#preregistration">The null result</a></li>
+          <li><a href="#numbers">Numbers</a></li>
+          <li><a href="#quickstart">Quick start</a></li>
+        </ul>
+      </nav>
+      <a class="button button-small" href="https://github.com/sainzs/droid-tune">GitHub</a>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <section class="hero wrap" id="top" aria-labelledby="hero-title">
+      <p class="kicker">Open-source measurement harness for Factory Droid agents</p>
+      <h1 id="hero-title">Grade the commit,<br>not the narration.</h1>
+      <p class="lede">
+        droid-tune runs coding tasks through an agent in an isolated git worktree,
+        grades the resulting <strong>commit</strong> with deterministic behavioral tests,
+        and writes an evidence pack for every attempt &mdash; so a result can be audited
+        later instead of trusted.
+      </p>
+      <div class="hero-actions">
+        <a class="button" href="https://github.com/sainzs/droid-tune">View on GitHub</a>
+        <a class="button button-ghost" href="#finding">Read the finding</a>
+      </div>
+      <figure class="hero-figure">
+        <img src="../assets/hero.gif"
+             alt="Animated terminal console running the droid-tune verification workflow: diagnose, tune, verify."
+             width="1000" height="640">
+        <figcaption>The verification console. Mechanical checks, reproducible evidence.</figcaption>
+      </figure>
+    </section>
+
+    <section class="wrap section" id="finding" aria-labelledby="finding-title">
+      <p class="kicker">The finding that motivates the project</p>
+      <h2 id="finding-title">Four models fixed the bug.<br>Seven of eight attempts submitted nothing.</h2>
+      <div class="finding-grid">
+        <div class="finding-prose">
+          <p>
+            The task <code>t004-git-surgery</code> asks the agent to repair a broken git
+            history and says, explicitly: <em>commit your result</em>. Across a 40-trial
+            live flake check, four different models repaired the history correctly and
+            then never ran <code>git commit</code>.
+          </p>
+          <p>
+            <strong>7 of 8 attempts were classified <code>NO_SUBMISSION</code>.</strong>
+            A grader that inspects files or diffs would have passed all seven &mdash;
+            the work was done, sitting uncommitted in the worktree. droid-tune grades
+            the commit, so it fails them. The one
+            <code>nemotron-3.5-lightning-free</code> attempt that did commit also passed.
+          </p>
+          <p>
+            This is the gap the tool exists to measure: the difference between an agent
+            that <em>did the work</em> and an agent that <em>delivered it</em>. A
+            transcript tells the first story. Only the commit tells the second.
+          </p>
+        </div>
+        <aside class="stat-panel" aria-label="t004-git-surgery outcome breakdown">
+          <p class="stat-panel-title">t004-git-surgery · 8 attempts</p>
+          <dl class="stat-list">
+            <div class="stat-row">
+              <dt>NO_SUBMISSION</dt>
+              <dd class="stat-bad">7 / 8</dd>
+            </div>
+            <div class="stat-row">
+              <dt>VERIFIED_PASS</dt>
+              <dd class="stat-good">1 / 8</dd>
+            </div>
+          </dl>
+          <p class="stat-panel-note">Work completed, never committed &mdash; counted as no submission.</p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="wrap section" id="evidence" aria-labelledby="evidence-title">
+      <p class="kicker">What every trial produces</p>
+      <h2 id="evidence-title">An evidence pack, not a score.</h2>
+      <p class="section-lede">
+        Every claim-eligible trial writes a complete, hash-manifested pack. If the pack
+        is missing the transcript, the verifier provenance, or the pricing snapshot,
+        the tool will not make the claim. The bar is mechanical: the tool must be
+        incapable of stating a claim the evidence doesn't support.
+      </p>
+      <ul class="pack-list">
+        <li>
+          <code>manifest.json</code>
+          <span>SHA-256 manifest of every artifact in the pack.</span>
+        </li>
+        <li>
+          <code>results.json</code>
+          <span>The outcome class &mdash; VERIFIED_PASS, NO_SUBMISSION, and the rest &mdash; from deterministic behavioral tests. LLM judges are barred from pass/fail.</span>
+        </li>
+        <li>
+          <code>transcript.jsonl</code>
+          <span>The full session, kept for offline audit.</span>
+        </li>
+        <li>
+          <code>patch</code> + frozen <code>tests/</code>
+          <span>The graded diff and the exact test tree that graded it. The agent worktree never contains <code>tests/</code> or <code>solution/</code>.</span>
+        </li>
+        <li>
+          Provenance
+          <span>Which model, which tune and its hash, which runner SHA &mdash; so a number can be traced back to the exact configuration that produced it.</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="wrap section" id="preregistration" aria-labelledby="prereg-title">
+      <p class="kicker">The preregistered claim &mdash; published in full</p>
+      <h2 id="prereg-title">The flagship result is a null result.</h2>
+      <div class="null-layout">
+        <div class="null-prose">
+          <p>
+            <code>dt-v1-ledger-lite-nosub</code> was registered <em>before</em> running:
+            a frozen decision rule, a pinned tune hash, a required effect size. The
+            hypothesis &mdash; a ~390-token tune file would cut the NO_SUBMISSION rate by
+            at least 25 percentage points.
+          </p>
+          <p>
+            80 trials later (2 arms &times; 4 routes &times; 10 attempts), the decision
+            rule was computed without re-cutting the metric.
+          </p>
+          <p>
+            <strong>Result: NOT SUPPORTED.</strong> The tune moved NO_SUBMISSION 5.0
+            percentage points against a required 25. The hypothesis failed, and the
+            failure is published in full &mdash; claim file, sweep data, and analysis
+            script &mdash; because a tool that only publishes its wins is not a
+            measurement tool.
+          </p>
+        </div>
+        <figure class="null-table-wrap">
+          <figcaption class="stat-panel-title">dt-v1-ledger-lite-nosub · 80 trials</figcaption>
+          <table class="null-table">
+            <thead>
+              <tr>
+                <th scope="col">Metric</th>
+                <th scope="col">Control</th>
+                <th scope="col">Tuned</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">NO_SUBMISSION</th>
+                <td>85.0%</td>
+                <td>80.0%</td>
+              </tr>
+              <tr>
+                <th scope="row">VERIFIED_PASS</th>
+                <td>15.0%</td>
+                <td>20.0%</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="stat-panel-note">
+            &Delta; = 5.0pp vs 25pp required · two-sided Fisher exact p = 0.7695 ·
+            <span class="stat-bad">NOT SUPPORTED</span>
+          </p>
+        </figure>
+      </div>
+    </section>
+
+    <section class="wrap section" id="numbers" aria-labelledby="numbers-title">
+      <p class="kicker">Committed, reproducible, or both</p>
+      <h2 id="numbers-title">The numbers, all of them.</h2>
+      <p class="section-lede">
+        Every statistic on this page is one of these. There are no others.
+      </p>
+      <dl class="number-grid">
+        <div class="number-card">
+          <dd>29 / 40</dd>
+          <dt>VERIFIED_PASS across 5 tasks and 4 OpenCode Zen free routes, at $0 cost &mdash; a live flake check.</dt>
+        </div>
+        <div class="number-card">
+          <dd>13 / 23</dd>
+          <dt>VERIFIED_PASS (57%) in the committed demo pack, 3 tasks &times; 4 routes &mdash; regenerable by anyone from the repo.</dt>
+        </div>
+        <div class="number-card">
+          <dd>4 / 10</dd>
+          <dt>advertised free routes that answered a probe as usable. The rest returned errors, recorded as data.</dt>
+        </div>
+        <div class="number-card">
+          <dd>80</dd>
+          <dt>trials in the preregistered dt-v1 sweep: 2 arms &times; 4 routes &times; 10 attempts. Null result, published.</dt>
+        </div>
+        <div class="number-card">
+          <dd>413</dd>
+          <dt>tests in the suite, including re-derivation checks that fail CI if a committed report drifts from its evidence.</dt>
+        </div>
+        <div class="number-card">
+          <dd>0</dd>
+          <dt>runtime dependencies. Node &ge; 20, ESM. Nothing to install but the repo itself.</dt>
+        </div>
+      </dl>
+    </section>
+
+    <section class="wrap section" id="quickstart" aria-labelledby="quickstart-title">
+      <p class="kicker">Reproduce it yourself</p>
+      <h2 id="quickstart-title">Quick start.</h2>
+      <div class="quickstart-grid">
+        <div class="terminal" role="group" aria-label="Clone and test">
+          <p class="terminal-title">Clone and run the suite</p>
+          <pre><code>git clone https://github.com/sainzs/droid-tune
+cd droid-tune
+npm test</code></pre>
+        </div>
+        <div class="terminal" role="group" aria-label="Install as a Droid plugin">
+          <p class="terminal-title">Install as a Droid plugin</p>
+          <pre><code>droid plugin marketplace add \
+  https://github.com/sainzs/droid-tune</code></pre>
+        </div>
+      </div>
+      <p class="section-lede">
+        Running trials against models requires your own credentials; free routes are
+        probed daily and the results are committed as data. The demo pack and every
+        published number regenerate offline, with no credentials and no network.
+      </p>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <p class="disclaimer">
+        Unofficial community project. Not affiliated with Factory.
+        &ldquo;Factory Droid&rdquo; is referenced as the measured product, nominative use only.
+      </p>
+      <p>
+        <a href="https://github.com/sainzs/droid-tune">github.com/sainzs/droid-tune</a>
+        &middot; MIT license
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
