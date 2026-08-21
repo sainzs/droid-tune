@@ -67,6 +67,7 @@ import { OUTCOME_CLASSES } from '../lib/runner.js'
 import {
   ABORT_OUTCOMES,
   INVALID_OBSERVATION_OUTCOMES,
+  packProvenanceFault,
   REPLACEABLE_OUTCOMES,
   REPLACEMENT_CAP_PER_ROUTE
 } from '../lib/sweep.js'
@@ -421,6 +422,7 @@ export function analyzeClaim (opts) {
     trials.set(keyOf(e.claimRoute, e.arm, e.attempt), { ...e, source: 'log' })
   }
   const foundPacks = []
+  const packFaults = []
   for (const arm of arms) {
     const armRoot = path.join(runsDir, arm)
     if (!isDir(armRoot)) continue
@@ -440,6 +442,27 @@ export function analyzeClaim (opts) {
         const hasResults = existsSync(path.join(attemptDir, 'results.json'))
         if (!hasManifest && !hasResults) continue
         const attempt = Number(m[1])
+        // A pack becomes evidence for this claim only if its own manifest says
+        // it is: pinned tune hash on the tuned arm, none on the control, and a
+        // modelRequested naming this route. The sweep applies exactly this test
+        // before adopting a pack (lib/sweep.js), and this tool must not be the
+        // weaker gate — it is the one that publishes. Filesystem placement is
+        // not provenance: an ad-hoc trial run at the same path, or a pack from
+        // a different claim, would otherwise be counted into the pooled rates
+        // and the conclusion.
+        const fault = !hasManifest
+          ? 'it has no manifest.json (a run that died mid-pack, or not an evidence pack at all)'
+          // Checked against the directory segment the pack actually sits in,
+          // not the claim's registered route name: a registered name may carry
+          // characters the path layout normalizes (laguna-s-2.1-free addresses
+          // laguna-s-2-1-free), and resolvePackSegment above already tied this
+          // segment to that registered route. The question here is narrower —
+          // does this pack belong to the route directory holding it.
+          : packProvenanceFault(attemptDir, { arm, route: segment }, claim)
+        if (fault !== null) {
+          packFaults.push(`${attemptDir}: ${fault}`)
+          continue
+        }
         foundPacks.push({ claimRoute, arm, attempt, hasManifest, attemptDir })
         const key = keyOf(claimRoute, arm, attempt)
         if (!trials.has(key)) {
@@ -456,6 +479,18 @@ export function analyzeClaim (opts) {
         }
       }
     }
+  }
+
+  // Refuse rather than quietly analyzing a subset. Skipping an unverifiable
+  // pack would change the denominator without saying so, which is the same
+  // failure as counting it: either way the published rates would describe a
+  // set of trials the report never names. The operator moves the pack aside.
+  if (packFaults.length > 0) {
+    throw new Error(
+      `refusing to analyze ${claim.id}: ${packFaults.length} pack(s) under ${runsDir} sit on this claim's ` +
+      `paths but cannot be verified as its evidence —\n  ${packFaults.join('\n  ')}\n` +
+      `Move them aside (or point --runs-dir at a clean tree), then re-run.`
+    )
   }
 
   // Replacements used per route: SCHEDULED lines in the log, cross-checked

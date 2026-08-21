@@ -67,6 +67,8 @@ function makeFixture (t, {
     arms,
     routes,
     design: { nPerArmPerRoute: n, autoLevel: 'high', timeoutMs: 300000 },
+    tuneFile: 'tunes/ledger-lite/AGENTS.md',
+    tuneSha256: FIXTURE_TUNE_SHA,
     primaryMetric: 'no-submission-rate',
     primaryMetricDefinition: 'count(outcome == NO_SUBMISSION) / count(trials that reached the model)',
     secondaryMetrics: [],
@@ -122,10 +124,24 @@ function baseLines (fixture, seqs) {
   return lines
 }
 
-function writePack (fixture, { arm, route, task = fixture.task, attempt, outcome, segment = null }) {
-  const dir = path.join(fixture.runsDir, arm, segment ?? routeSlug(fixture.canonical(route)), task, `attempt-${attempt}`)
+// The pinned tune hash a fixture claim registers. Fixture packs must carry
+// provenance the way lib/runner.js writes it, or they exercise a laxer world
+// than the one the tools actually run in: analysis verifies a pack's manifest
+// against the claim before counting it.
+const FIXTURE_TUNE_SHA = '17ee2f2201af4aaf67227e7e5bbf366a94c11272720f4a823aae5580a4641b4b'
+
+function writePack (fixture, { arm, route, task = fixture.task, attempt, outcome, segment = null, provenance = {} }) {
+  const seg = segment ?? routeSlug(fixture.canonical(route))
+  const dir = path.join(fixture.runsDir, arm, seg, task, `attempt-${attempt}`)
   mkdirSync(dir, { recursive: true })
-  writeFileSync(path.join(dir, 'manifest.json'), '{}')
+  // Control arm carries no tune; the tuned arm carries the claim's pinned one.
+  const tune = arm === fixture.claim.arms[0]
+    ? null
+    : { name: 'ledger-lite', sha256: fixture.claim.tuneSha256 ?? FIXTURE_TUNE_SHA, bytes: 1721 }
+  writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({
+    trialId: `${arm}/${seg}/${task}/attempt-${attempt}`,
+    provenance: { modelRequested: seg, tune, ...provenance }
+  }, null, 2))
   writeFileSync(path.join(dir, 'results.json'), JSON.stringify({ outcome }))
 }
 
@@ -1281,4 +1297,53 @@ test('parseArgs maps flags and alias without side effects', () => {
   assert.equal(parseArgs(['-h']).help, true)
   assert.equal(parseArgs(['dt-v1-ledger-lite-nosub']).claim, 'dt-v1-ledger-lite-nosub')
   assert.equal(parseArgs(['--claim', 'a.json', 'b.json']).claim, 'a.json', '--claim beats a positional')
+})
+
+// --- provenance gate: the publishing path is not weaker than the sweep ------
+
+const gateFixture = (t) => {
+  const fixture = makeFixture(t, { n: 2 })
+  for (const arm of ['no-tune', 'ledger-lite']) {
+    for (const attempt of [1, 2]) writePack(fixture, { arm, route: 'hy3-free', attempt, outcome: PASS })
+  }
+  return fixture
+}
+const packPath = (fixture, arm, attempt) =>
+  path.join(fixture.runsDir, arm, 'hy3-free', fixture.task, `attempt-${attempt}`)
+
+test('analysis refuses a pack whose manifest does not back it as this claim\'s evidence', (t) => {
+  const fixture = gateFixture(t)
+  assert.equal(analyze(fixture).state, 'complete')
+  // A control-arm pack recording the tune. lib/sweep.js refuses to ADOPT this;
+  // the report must refuse to COUNT it, or evidence the sweep rejected becomes
+  // a published number by the back door.
+  const manifestPath = path.join(packPath(fixture, 'no-tune', 1), 'manifest.json')
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  manifest.provenance.tune = { name: 'ledger-lite', sha256: fixture.claim.tuneSha256, bytes: 1721 }
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
+  assert.throws(() => analyze(fixture), /cannot be verified as its evidence[\s\S]*control arm never carries a tune/)
+})
+
+test('analysis refuses a pack recorded against a different route', (t) => {
+  const fixture = gateFixture(t)
+  const manifestPath = path.join(packPath(fixture, 'ledger-lite', 2), 'manifest.json')
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  manifest.provenance.modelRequested = 'some-other-route'
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
+  assert.throws(() => analyze(fixture), /does not match the slot's route/)
+})
+
+test('analysis refuses a tuned-arm pack that ran a different tune than the claim pinned', (t) => {
+  const fixture = gateFixture(t)
+  const manifestPath = path.join(packPath(fixture, 'ledger-lite', 1), 'manifest.json')
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  manifest.provenance.tune.sha256 = 'b'.repeat(64)
+  writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
+  assert.throws(() => analyze(fixture), /does not match the claim's pinned tuneSha256/)
+})
+
+test('analysis refuses a half-written pack rather than counting it as a trial', (t) => {
+  const fixture = gateFixture(t)
+  rmSync(path.join(packPath(fixture, 'no-tune', 2), 'manifest.json'))
+  assert.throws(() => analyze(fixture), /no manifest\.json/)
 })
