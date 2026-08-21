@@ -66,6 +66,8 @@ sweep flags:
                          route/arm/attempt table with statuses; spawns nothing)
   --limit <n>            Execute only the first n pending slots, then stop
                          cleanly (paced batches against rate-limited routes)
+  --resume-after-abort   Acknowledge a logged SWEEP_ABORTED (appends an
+                         ABORT_ACKNOWLEDGED line to the sweep log) and resume
   --runs-dir <path>      Evidence-pack root (default ./runs)
 
 run flags:
@@ -161,6 +163,8 @@ function parseArgs (argv) {
       opts.confirmSpend = true
     } else if (a === '--live') {
       opts.live = true
+    } else if (a === '--resume-after-abort') {
+      opts.resumeAfterAbort = true
     } else if (cmd === 'run' && !a.startsWith('-') && opts.task === undefined) {
       opts.task = a
     } else if ((cmd === 'audit' || cmd === 'badge') && !a.startsWith('-') && opts.target === undefined) {
@@ -384,7 +388,8 @@ async function cmdSweep (opts) {
     // no droid installed at all.
     droidPath: opts.live ? resolveDroidOrDie(opts) : undefined,
     live: !!opts.live,
-    limit: opts.limit ?? null
+    limit: opts.limit ?? null,
+    resumeAfterAbort: !!opts.resumeAfterAbort
   })
   if (opts.json) {
     process.stdout.write(JSON.stringify(result, null, 2) + '\n')

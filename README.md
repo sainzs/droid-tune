@@ -229,8 +229,9 @@ Trial flags: `--task <dir>` · `--model <id-or-substring>` · `--tune <name>` ·
 `--timeout-ms <n>` · `--runs-dir <path>` · `--json`.
 
 Sweep flags: `--claim <file-or-id>` · `--live` · `--limit <n>` ·
-`--runs-dir <path>` · `--json`. Without `--live` it spawns nothing and writes
-nothing, so the schedule can be inspected on a machine with no Droid installed:
+`--resume-after-abort` · `--runs-dir <path>` · `--json`. Without `--live` it
+spawns nothing and writes nothing, so the schedule can be inspected on a
+machine with no Droid installed:
 
 ```sh
 node bin/droidtune.js sweep --claim dt-v1-ledger-lite-nosub   # preview 80 slots
@@ -239,8 +240,15 @@ node bin/droidtune.js sweep --claim dt-v1-ledger-lite-nosub   # preview 80 slots
 The sweep executes only what the claim registers — it re-checks the tune's
 SHA-256 against the pinned hash before scheduling, resumes an interrupted run
 from the evidence packs plus its append-only log, and applies the claim's
-replacement rule without renumbering anything. It reports outcome counts and
-deliberately stops there: computing the decision rule is a separate step.
+replacement rule without renumbering anything. Resume is verified, not
+assumed: a pack is adopted only if its manifest proves it belongs to this
+sweep (pinned tune hash on the tuned arm, no tune on the control arm, the
+slot's route as the requested model), a half-written pack refuses the run
+rather than being clobbered, adopted packs with never-reached-model outcomes
+go through the same replacement rule, and a harness-fault abort blocks later
+live runs until `--resume-after-abort` appends the acknowledgement to the
+log. It reports outcome counts and deliberately stops there: computing the
+decision rule is a separate step.
 
 Common overrides: `--sessions-dir <path>` · `--config <file>` ·
 `--droid-path <path>`.
