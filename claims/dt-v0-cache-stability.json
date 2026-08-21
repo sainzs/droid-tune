@@ -10,10 +10,17 @@
     "t006-safe-listdir",
     "t007-rename-symbol"
   ],
-  "arms": ["native-droid", "cache-stable-droid"],
+  "arms": [
+    "native-droid",
+    "cache-stable-droid"
+  ],
   "pinnedModel": "Droid Core route observed in each paired trial",
   "primaryMetric": "first-pass-yield",
-  "secondaryMetrics": ["factory-standard-credits-per-verified-task", "cache-read-share", "cycle-time-ms"],
+  "secondaryMetrics": [
+    "factory-standard-credits-per-verified-task",
+    "cache-read-share",
+    "cycle-time-ms"
+  ],
   "n": 5,
   "decisionRule": "Recommend cache-stable-droid only if paired confirmatory first-pass yield is not lower and observed Factory Standard Credits per verified task are lower; report all exclusions and per-task deltas.",
   "registeredAt": "2026-08-19T00:00:00.000Z",

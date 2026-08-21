@@ -1065,6 +1065,12 @@ test('closeClaim moves a preregistered claim to reported with a derived conclusi
   assert.equal(onDisk.conclusion.state, 'complete')
   assert.equal(onDisk.conclusion.closedAt, '2026-08-21T00:00:00.000Z')
   assert.equal(onDisk.conclusion.closedBy, 'scripts/claim-report.js --close')
+  // The registered "Not run" sentence stays byte-identical; the conclusion
+  // says outright that it is scoped to registration time, so a reader of the
+  // JSON is never left holding two statements that contradict each other.
+  assert.equal(onDisk.conclusion.supersedesRegisteredNotRunClause, true)
+  const registered = JSON.parse(readFileSync(fixture.claimPath, 'utf8'))
+  assert.equal(registered.limitations, fixture.claim.limitations)
   // The conclusion cites evidence by repo-relative path and reports what it
   // actually analysed, at the n the claim registered.
   assert.equal(onDisk.conclusion.evidence.sweepLog, `runs/${fixture.claim.id}/sweep-log.jsonl`)

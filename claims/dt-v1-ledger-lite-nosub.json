@@ -4,8 +4,13 @@
   "question": "On t004-git-surgery, does the ledger-lite tune reduce the NO_SUBMISSION rate relative to an otherwise identical no-tune arm, across four free BYOK routes?",
   "hypothesis": "ledger-lite's explicit commit contract (\"ALWAYS commit completed work to git\"; an uncommitted working tree is not a submission) lowers the share of t004-git-surgery trials that end in NO_SUBMISSION, without lowering the VERIFIED_PASS rate.",
   "rationale": "The M4 flake check (2026-08-19, docs/m4-flake-check-2026-08.md) observed 7 of 8 t004-git-surgery attempts ending in NO_SUBMISSION across these same four routes. The transcripts show the failure is not competence: models inspected the history, performed the surgery, exercised calc.sh, narrated success — and never ran `git commit`. t004 is therefore the discriminative instrument for a commit-discipline intervention, and ledger-lite's Finish section targets exactly that step.",
-  "population": ["t004-git-surgery"],
-  "arms": ["no-tune", "ledger-lite"],
+  "population": [
+    "t004-git-surgery"
+  ],
+  "arms": [
+    "no-tune",
+    "ledger-lite"
+  ],
   "armDefinitions": {
     "no-tune": "droidtune trial --task tasks/t004-git-surgery --model <route> --tune no-tune, with no --tune-file. The worktree contains only what tasks/t004-git-surgery/environment/seed.sh creates.",
     "ledger-lite": "The same command plus --tune-file tunes/ledger-lite. lib/tune.js writes tunes/ledger-lite/AGENTS.md into the seeded worktree as an untracked, .git/info/exclude-listed file, so seedSha and the graded history are byte-identical to the no-tune arm."

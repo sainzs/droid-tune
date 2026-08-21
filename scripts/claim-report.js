@@ -692,6 +692,14 @@ export function deriveConclusion (result, closedAt) {
     status: CLOSED_STATUS,
     closedAt,
     closedBy: 'scripts/claim-report.js --close',
+    // The registered `limitations` prose is immutable, and on a claim written
+    // before any trial ran it says so in the present tense ("Not run: no trial
+    // for this claim has been executed"). That sentence was true when it was
+    // registered and stays byte-identical here, because editing a registration
+    // to match its result is the exact move a preregistration exists to
+    // prevent. It is scoped rather than silently contradicted: the registration
+    // describes the claim at registration time, this block describes it now.
+    supersedesRegisteredNotRunClause: true,
     state: result.state,
     verdict: result.decision.verdict,
     supported: result.decision.supported,
