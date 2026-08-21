@@ -13,7 +13,7 @@ import { runBaseline } from '../lib/baseline.js'
 import { runSweep, renderSchedule, renderSweepSummary } from '../lib/sweep.js'
 import { resolveDroid } from '../lib/droid-path.js'
 import { resolveTuneFile } from '../lib/tune.js'
-import { routeSlug } from '../lib/paths.js'
+import { routeOwner, routeSlug } from '../lib/paths.js'
 import { readObservations, summarize } from '../lib/weather.js'
 import { newestTranscript, renderFinding, renderWatchSummary, watchFile } from '../lib/watch.js'
 
@@ -289,6 +289,21 @@ async function cmdTrial (opts) {
   // (lib/paths.js) — or it stops guarding anything: two routes at the same
   // attempt number are distinct packs and must both be allowed to run.
   const route = routeSlug(model)
+  // Route identity guard: the slug is a readable address, not an identity —
+  // `custom:x-OpenCode-Zen-free-8` and a second provider's `x` both address
+  // runs/<tune>/x/. Pooling two providers under one route directory would
+  // corrupt any per-route claim reading that tree, and nothing downstream
+  // could tell, because the arm looks like a single route. Compare against the
+  // full id the existing packs recorded before writing another one.
+  const owner = routeOwner(resolvedRunsDir, tuneName, route)
+  if (owner !== null && owner !== model) {
+    throw new Error(
+      `route directory ${path.join(resolvedRunsDir, tuneName, route)} already holds packs from ` +
+      `a different model id (${owner}), but this trial requests ${model}. Both ids reduce to the ` +
+      `same route segment "${route}", so continuing would pool two routes into one arm. ` +
+      `Use --runs-dir to keep them apart.`
+    )
+  }
   const attemptDirFor = (n) => path.join(resolvedRunsDir, tuneName, route, taskId, `attempt-${n}`)
   const attemptManifestPath = (n) => path.join(attemptDirFor(n), 'manifest.json')
   if (existsSync(attemptManifestPath(attempt))) {

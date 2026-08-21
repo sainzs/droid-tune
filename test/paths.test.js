@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import path from 'node:path'
 import os from 'node:os'
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs'
-import { findPacks, isPackDir, packLabel, routeSlug } from '../lib/paths.js'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { findPacks, isPackDir, packLabel, routeOwner, routeSlug } from '../lib/paths.js'
 
 // --- route slug ------------------------------------------------------------
 test('routeSlug strips the custom: prefix and the provider suffix', () => {
@@ -39,6 +40,38 @@ test('ids that differ only in characters the sanitizer rewrites get distinct rou
   for (const id of ['hy3-free', 'custom:hy3-free-OpenCode-Zen-free-8', 'deepseek-v4-flash-0731', 'gpt-5.6-luna']) {
     assert.ok(!/-[0-9a-f]{6}$/.test(routeSlug(id)), `unexpected digest suffix for ${id}`)
   }
+})
+
+test('the display normalizations are many-to-one, and the slug does not pretend otherwise', () => {
+  // Documenting a known, deliberate limit rather than asserting a guarantee the
+  // function does not provide. The `custom:` strip, the `-OpenCode…` strip and
+  // the case fold all converge distinct ids onto one address. Digesting them
+  // would rename the published evidence tree (runs/ledger-lite/hy3-free/… is
+  // cited by a concluded claim), so identity is enforced at write time against
+  // provenance.modelRequested instead — see routeOwner.
+  assert.equal(routeSlug('custom:hy3-free-OpenCode-Zen-free-8'), 'hy3-free')
+  assert.equal(routeSlug('hy3-free-OpenCodeOther'), 'hy3-free')
+  assert.equal(routeSlug('Hy3-Free'), 'hy3-free')
+  assert.equal(routeSlug('hy3-free'), 'hy3-free')
+})
+
+test('routeOwner reports the full model id a route directory already belongs to', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'droidtune-owner-'))
+  const packDir = path.join(dir, 'ledger-lite', 'hy3-free', 't004-git-surgery', 'attempt-1')
+  mkdirSync(packDir, { recursive: true })
+  writeFileSync(
+    path.join(packDir, 'manifest.json'),
+    JSON.stringify({ provenance: { modelRequested: 'custom:hy3-free-OpenCode-Zen-free-8' } })
+  )
+  assert.equal(routeOwner(dir, 'ledger-lite', 'hy3-free'), 'custom:hy3-free-OpenCode-Zen-free-8')
+  // An unused route is unowned — a first trial must not be blocked.
+  assert.equal(routeOwner(dir, 'ledger-lite', 'nemotron-3-ultra-free'), null)
+  // A pack with no readable manifest must not fabricate an owner.
+  const bare = path.join(dir, 'no-tune', 'hy3-free', 't004-git-surgery', 'attempt-1')
+  mkdirSync(bare, { recursive: true })
+  writeFileSync(path.join(bare, 'results.json'), '{}')
+  assert.equal(routeOwner(dir, 'no-tune', 'hy3-free'), null)
+  await rm(dir, { recursive: true, force: true })
 })
 
 test('a native trial routes to native-droid regardless of any model argument', () => {
