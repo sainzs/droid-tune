@@ -22,3 +22,11 @@
 {"date":"2026-08-21","ts":"2026-08-21T07:07:01.718Z","route":"glm-5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":110,"detail":"Model glm-5-free is not supported","probe":"chat.completions"}
 {"date":"2026-08-21","ts":"2026-08-21T07:07:01.718Z","route":"kimi-k2.5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":83,"detail":"Model kimi-k2.5-free is not supported","probe":"chat.completions"}
 {"date":"2026-08-21","ts":"2026-08-21T07:07:01.718Z","route":"mimo-v2.5-free","status":"OK","httpStatus":200,"latencyMs":1770,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-22","ts":"2026-08-22T06:58:54.643Z","route":"hy3-free","status":"OK","httpStatus":200,"latencyMs":2501,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-22","ts":"2026-08-22T06:58:54.643Z","route":"nemotron-3.5-lightning-free","status":"OK","httpStatus":200,"latencyMs":5415,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-22","ts":"2026-08-22T06:58:54.643Z","route":"laguna-s-2.1-free","status":"OK","httpStatus":200,"latencyMs":2192,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-22","ts":"2026-08-22T06:58:54.643Z","route":"nemotron-3-ultra-free","status":"OK","httpStatus":200,"latencyMs":9412,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-22","ts":"2026-08-22T06:58:54.643Z","route":"deepseek-v4-flash-free","status":"ERROR","httpStatus":400,"latencyMs":177,"detail":"HTTP 400: Error from provider (Console): Upstream request failed: Model is unavailable.","probe":"chat.completions"}
+{"date":"2026-08-22","ts":"2026-08-22T06:58:54.643Z","route":"glm-5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":108,"detail":"Model glm-5-free is not supported","probe":"chat.completions"}
+{"date":"2026-08-22","ts":"2026-08-22T06:58:54.643Z","route":"kimi-k2.5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":76,"detail":"Model kimi-k2.5-free is not supported","probe":"chat.completions"}
+{"date":"2026-08-22","ts":"2026-08-22T06:58:54.643Z","route":"mimo-v2.5-free","status":"OK","httpStatus":200,"latencyMs":1457,"detail":null,"probe":"chat.completions"}
