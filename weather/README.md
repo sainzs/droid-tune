@@ -1,17 +1,17 @@
 # Free-route weather
 
-**As of 2026-08-28, 1 of 8 free routes answered.**
+**As of 2026-08-29, 5 of 8 free routes answered.**
 
-| route | 08-20 | 08-21 | 08-22 | 08-23 | 08-24 | 08-25 | 08-26 | 08-27 | 08-28 | up |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `hy3-free` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 9/9 |
-| `nemotron-3.5-lightning-free` | ✓ | ✓ | ✓ | t/o | ✓ | ✓ | ✓ | t/o | t/o | 6/9 |
-| `laguna-s-2.1-free` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | err | 8/9 |
-| `nemotron-3-ultra-free` | ✓ | err | ✓ | t/o | ✓ | ✓ | ✓ | ✓ | t/o | 6/9 |
-| `deepseek-v4-flash-free` | 429 | auth | err | err | err | err | err | err | err | 0/9 |
-| `glm-5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/9 |
-| `kimi-k2.5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/9 |
-| `mimo-v2.5-free` | 429 | ✓ | ✓ | 429 | ✓ | ✓ | 429 | ✓ | err | 5/9 |
+| route | 08-20 | 08-21 | 08-22 | 08-23 | 08-24 | 08-25 | 08-26 | 08-27 | 08-28 | 08-29 | up |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `hy3-free` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 10/10 |
+| `nemotron-3.5-lightning-free` | ✓ | ✓ | ✓ | t/o | ✓ | ✓ | ✓ | t/o | t/o | ✓ | 7/10 |
+| `laguna-s-2.1-free` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | err | ✓ | 9/10 |
+| `nemotron-3-ultra-free` | ✓ | err | ✓ | t/o | ✓ | ✓ | ✓ | ✓ | t/o | ✓ | 7/10 |
+| `deepseek-v4-flash-free` | 429 | auth | err | err | err | err | err | err | err | err | 0/10 |
+| `glm-5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/10 |
+| `kimi-k2.5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/10 |
+| `mimo-v2.5-free` | 429 | ✓ | ✓ | 429 | ✓ | ✓ | 429 | ✓ | err | ✓ | 6/10 |
 
 - `✓` — answered with a well-formed completion
 - `429` — throttled

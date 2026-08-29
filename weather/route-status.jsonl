@@ -78,3 +78,11 @@
 {"date":"2026-08-28","ts":"2026-08-28T18:40:51.717Z","route":"glm-5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":91,"detail":"Model glm-5-free is not supported","probe":"chat.completions"}
 {"date":"2026-08-28","ts":"2026-08-28T18:40:51.717Z","route":"kimi-k2.5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":67,"detail":"Model kimi-k2.5-free is not supported","probe":"chat.completions"}
 {"date":"2026-08-28","ts":"2026-08-28T18:40:51.717Z","route":"mimo-v2.5-free","status":"ERROR","httpStatus":400,"latencyMs":222,"detail":"HTTP 400: Error from provider (Console): Upstream request failed: [404] No allowed providers are available for the selected model. Providers serving xiaomi/mimo-v2.5-2026","probe":"chat.completions"}
+{"date":"2026-08-29","ts":"2026-08-29T12:40:59.420Z","route":"hy3-free","status":"OK","httpStatus":200,"latencyMs":2064,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-29","ts":"2026-08-29T12:40:59.420Z","route":"nemotron-3.5-lightning-free","status":"OK","httpStatus":200,"latencyMs":577,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-29","ts":"2026-08-29T12:40:59.420Z","route":"laguna-s-2.1-free","status":"OK","httpStatus":200,"latencyMs":794,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-29","ts":"2026-08-29T12:40:59.420Z","route":"nemotron-3-ultra-free","status":"OK","httpStatus":200,"latencyMs":1849,"detail":null,"probe":"chat.completions"}
+{"date":"2026-08-29","ts":"2026-08-29T12:40:59.420Z","route":"deepseek-v4-flash-free","status":"ERROR","httpStatus":400,"latencyMs":155,"detail":"HTTP 400: Error from provider (Console): Upstream request failed: Model is unavailable.","probe":"chat.completions"}
+{"date":"2026-08-29","ts":"2026-08-29T12:40:59.420Z","route":"glm-5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":69,"detail":"Model glm-5-free is not supported","probe":"chat.completions"}
+{"date":"2026-08-29","ts":"2026-08-29T12:40:59.420Z","route":"kimi-k2.5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":35,"detail":"Model kimi-k2.5-free is not supported","probe":"chat.completions"}
+{"date":"2026-08-29","ts":"2026-08-29T12:40:59.420Z","route":"mimo-v2.5-free","status":"OK","httpStatus":200,"latencyMs":1481,"detail":null,"probe":"chat.completions"}
