@@ -1,17 +1,17 @@
 # Free-route weather
 
-**As of 2026-08-30, 3 of 8 free routes answered.**
+**As of 2026-08-31, 1 of 8 free routes answered.**
 
-| route | 08-20 | 08-21 | 08-22 | 08-23 | 08-24 | 08-25 | 08-26 | 08-27 | 08-28 | 08-29 | 08-30 | up |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `hy3-free` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | n/a | 10/11 |
-| `nemotron-3.5-lightning-free` | ✓ | ✓ | ✓ | t/o | ✓ | ✓ | ✓ | t/o | t/o | ✓ | ✓ | 8/11 |
-| `laguna-s-2.1-free` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | err | ✓ | ✓ | 10/11 |
-| `nemotron-3-ultra-free` | ✓ | err | ✓ | t/o | ✓ | ✓ | ✓ | ✓ | t/o | ✓ | t/o | 7/11 |
-| `deepseek-v4-flash-free` | 429 | auth | err | err | err | err | err | err | err | err | err | 0/11 |
-| `glm-5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/11 |
-| `kimi-k2.5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/11 |
-| `mimo-v2.5-free` | 429 | ✓ | ✓ | 429 | ✓ | ✓ | 429 | ✓ | err | ✓ | ✓ | 7/11 |
+| route | 08-20 | 08-21 | 08-22 | 08-23 | 08-24 | 08-25 | 08-26 | 08-27 | 08-28 | 08-29 | 08-30 | 08-31 | up |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `hy3-free` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | n/a | n/a | 10/12 |
+| `nemotron-3.5-lightning-free` | ✓ | ✓ | ✓ | t/o | ✓ | ✓ | ✓ | t/o | t/o | ✓ | ✓ | t/o | 8/12 |
+| `laguna-s-2.1-free` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | err | ✓ | ✓ | err | 10/12 |
+| `nemotron-3-ultra-free` | ✓ | err | ✓ | t/o | ✓ | ✓ | ✓ | ✓ | t/o | ✓ | t/o | t/o | 7/12 |
+| `deepseek-v4-flash-free` | 429 | auth | err | err | err | err | err | err | err | err | err | err | 0/12 |
+| `glm-5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/12 |
+| `kimi-k2.5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/12 |
+| `mimo-v2.5-free` | 429 | ✓ | ✓ | 429 | ✓ | ✓ | 429 | ✓ | err | ✓ | ✓ | ✓ | 8/12 |
 
 - `✓` — answered with a well-formed completion
 - `429` — throttled
