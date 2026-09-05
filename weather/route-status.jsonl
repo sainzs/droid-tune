@@ -134,3 +134,11 @@
 {"date":"2026-09-04","ts":"2026-09-04T11:16:36.979Z","route":"glm-5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":95,"detail":"Model glm-5-free is not supported","probe":"chat.completions"}
 {"date":"2026-09-04","ts":"2026-09-04T11:16:36.979Z","route":"kimi-k2.5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":122,"detail":"Model kimi-k2.5-free is not supported","probe":"chat.completions"}
 {"date":"2026-09-04","ts":"2026-09-04T11:16:36.979Z","route":"mimo-v2.5-free","status":"OK","httpStatus":200,"latencyMs":1327,"detail":null,"probe":"chat.completions"}
+{"date":"2026-09-05","ts":"2026-09-05T10:34:32.285Z","route":"hy3-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":144,"detail":"Model hy3-free is not supported","probe":"chat.completions"}
+{"date":"2026-09-05","ts":"2026-09-05T10:34:32.285Z","route":"nemotron-3.5-lightning-free","status":"OK","httpStatus":200,"latencyMs":675,"detail":null,"probe":"chat.completions"}
+{"date":"2026-09-05","ts":"2026-09-05T10:34:32.285Z","route":"laguna-s-2.1-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":37,"detail":"Model laguna-s-2.1-free is not supported","probe":"chat.completions"}
+{"date":"2026-09-05","ts":"2026-09-05T10:34:32.285Z","route":"nemotron-3-ultra-free","status":"TIMEOUT","httpStatus":null,"latencyMs":25002,"detail":"This operation was aborted","probe":"chat.completions"}
+{"date":"2026-09-05","ts":"2026-09-05T10:34:32.285Z","route":"deepseek-v4-flash-free","status":"ERROR","httpStatus":400,"latencyMs":135,"detail":"HTTP 400: Error from provider (Console): Upstream request failed: Model is unavailable.","probe":"chat.completions"}
+{"date":"2026-09-05","ts":"2026-09-05T10:34:32.285Z","route":"glm-5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":35,"detail":"Model glm-5-free is not supported","probe":"chat.completions"}
+{"date":"2026-09-05","ts":"2026-09-05T10:34:32.285Z","route":"kimi-k2.5-free","status":"UNSUPPORTED","httpStatus":401,"latencyMs":37,"detail":"Model kimi-k2.5-free is not supported","probe":"chat.completions"}
+{"date":"2026-09-05","ts":"2026-09-05T10:34:32.285Z","route":"mimo-v2.5-free","status":"OK","httpStatus":200,"latencyMs":3392,"detail":null,"probe":"chat.completions"}
