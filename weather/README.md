@@ -1,17 +1,17 @@
 # Free-route weather
 
-**As of 2026-09-06, 2 of 8 free routes answered.**
+**As of 2026-09-07, 0 of 8 free routes answered.**
 
-| route | 08-24 | 08-25 | 08-26 | 08-27 | 08-28 | 08-29 | 08-30 | 08-31 | 09-01 | 09-02 | 09-03 | 09-04 | 09-05 | 09-06 | up |
+| route | 08-25 | 08-26 | 08-27 | 08-28 | 08-29 | 08-30 | 08-31 | 09-01 | 09-02 | 09-03 | 09-04 | 09-05 | 09-06 | 09-07 | up |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `hy3-free` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 6/14 |
-| `nemotron-3.5-lightning-free` | ✓ | ✓ | ✓ | t/o | t/o | ✓ | ✓ | t/o | t/o | ✓ | ✓ | ✓ | ✓ | ✓ | 10/14 |
-| `laguna-s-2.1-free` | ✓ | ✓ | ✓ | ✓ | err | ✓ | ✓ | err | ✓ | err | ✓ | ✓ | n/a | n/a | 9/14 |
-| `nemotron-3-ultra-free` | ✓ | ✓ | ✓ | ✓ | t/o | ✓ | t/o | t/o | t/o | t/o | t/o | t/o | t/o | t/o | 5/14 |
+| `hy3-free` | ✓ | ✓ | ✓ | ✓ | ✓ | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 5/14 |
+| `nemotron-3.5-lightning-free` | ✓ | ✓ | t/o | t/o | ✓ | ✓ | t/o | t/o | ✓ | ✓ | ✓ | ✓ | ✓ | err | 9/14 |
+| `laguna-s-2.1-free` | ✓ | ✓ | ✓ | err | ✓ | ✓ | err | ✓ | err | ✓ | ✓ | n/a | n/a | n/a | 8/14 |
+| `nemotron-3-ultra-free` | ✓ | ✓ | ✓ | t/o | ✓ | t/o | t/o | t/o | t/o | t/o | t/o | t/o | t/o | err | 4/14 |
 | `deepseek-v4-flash-free` | err | err | err | err | err | err | err | err | err | err | err | err | err | err | 0/14 |
 | `glm-5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/14 |
 | `kimi-k2.5-free` | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | n/a | 0/14 |
-| `mimo-v2.5-free` | ✓ | ✓ | 429 | ✓ | err | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 12/14 |
+| `mimo-v2.5-free` | ✓ | 429 | ✓ | err | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | err | 11/14 |
 
 - `✓` — answered with a well-formed completion
 - `429` — throttled
